@@ -68,7 +68,7 @@ class Sprite(pygame.sprite.Sprite):
             logger.error("Sprite.setup_mouse_events(): event_on_unclick must be of type Event")
         self.event_on_unclick = event_on_unclick
 
-    def draw(self):
+    def draw(self, force_draw=False):
         pass
 
     def slow_update(self):
@@ -128,8 +128,8 @@ class Sprite_Animation(Sprite):
             self._anim_config.setup(len(self._animations[new_animation]), mode, loops_per_image)
             self._draw_reqd = True
 
-    def draw(self):
-        if self._draw_reqd:
+    def draw(self, force_draw=False):
+        if self._draw_reqd or force_draw:
             anim_name = self._anim_name
             if (anim_name != ""):
                 if self._anim_config.next_loop():
@@ -206,10 +206,6 @@ class Sprite_Shape(Sprite):
         self.colours = shape_colours
         self.shape = shape
         self.image = pygame.Surface(self.rect.size, pygame.SRCALPHA)
-        # if self._colour_fill is None:
-        #     self.image = pygame.Surface((width, height), pygame.SRCALPHA)
-        # else:
-        #     self.image = pygame.Surface((width, height))
         self._draw_reqd = True
 
     def setup_polygon(self, pointlist):
@@ -225,7 +221,6 @@ class Sprite_Shape(Sprite):
             self.image = self.create_surface(width, height, True)
         else:
             self.image = self.create_surface(width, height, False)
-            self.image = pygame.Surface((width, height))
             self.image.fill(colours[fill_colour])
         self.rect.size = self.image.get_size()
         self._draw_reqd = True
@@ -236,8 +231,8 @@ class Sprite_Shape(Sprite):
         self._colour_alt = c
         self._draw_reqd = True
 
-    def draw(self):
-        if self._draw_reqd:
+    def draw(self, force_draw=False):
+        if self._draw_reqd or force_draw:
             draw_rect = self.rect.copy()
             draw_rect.topleft = (0,0)
 
@@ -303,15 +298,15 @@ class Sprite_TextBox(Sprite_Shape):
     def set_text(self, *args):
         self.text = self._format_string.format(*args)
 
-    def draw(self):
-        if self._draw_reqd:
+    def draw(self, force_draw=False):
+        if self._draw_reqd or force_draw:
             self.setup_shape(self.rect, [self._colour_fill])
             if self.rect.width == 0:
                 self.image = self._font.render(self.text, True, self._colour_text)
                 if self._auto_size:
                     self._image_size_to_rect()
             else:
-                super().draw()
+                super().draw(force_draw)
                 text_image = self._font.render(self.text, True, self._colour_text)
                 text_rect = text_image.get_rect()
                 if self._auto_size and (text_rect.width > self.rect.width or text_rect.height > self.rect.height):
@@ -447,8 +442,8 @@ class Sprite_BoardGame_Piece(Sprite_Shape):
         self.rect.topleft = r.topleft
         self.rect.size = r.size
 
-    def draw(self):
-        if self._draw_reqd:
+    def draw(self, force_draw=False):
+        if self._draw_reqd or force_draw:
             self._draw_reqd = False
             if (self._piece_shape == Sprite_BoardGame_Piece.PIECE_CIRLCE):
                 r = self.reduce_cell(20)
@@ -479,19 +474,14 @@ class Sprite_ShapeSetManager(pygame.sprite.LayeredUpdates):
         else:
             self.offsetx = rect.left
             self.offsety = rect.top
-        self._image = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
 
     def add_shape(self, sprite):
-        # sprite.image = self._image
         super().add(sprite)
 
-    def draw_shapes(self):
-        self._image = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+    def draw_shapes(self, image):
         for s in self.sprites():
-            s.create_canvas()
-            s.draw()
-            self._image.blit(s.image, s.rect.move(-self.offsetx, -self.offsety))
-        return self._image
+            s.image = image
+            s.draw(force_draw=True)
 
 ### --------------------------------------------------
 
@@ -600,5 +590,4 @@ class SpriteGroup(pygame.sprite.Group):
     def collide(self, sprite_group, dokilla=False, dokillb=False, collided=pygame.sprite.collide_mask):
         coll_dict = pygame.sprite.groupcollide(self, sprite_group, dokilla, dokillb, collided)
         # logger.debug("Collide: {0} with {1}".format("A", "B"))
-        # print (coll_dict)
         return coll_dict
