@@ -8,13 +8,31 @@ from colour_constants import *
 class Sprite(pygame.sprite.Sprite):
     def __init__(self, name=""):
         super().__init__()
-        self.name = name
-        self.uuid = uuid.uuid4()
+        self._desc = {}
+        self.set_desc("name", name)
+        self.set_desc("uuid", uuid.uuid4())
         self.rect = MovingRect()
         self._image = None
         self.event_on_click = None
         self.event_on_unclick = None
         self._draw_reqd = False
+
+    def get_desc(self, attribute, no_value=None):
+        if attribute in self._desc:
+            return self._desc[attribute]
+        else:
+            return no_value
+
+    def set_desc(self, attribute, value):
+        self._desc[attribute] = value
+
+    @property
+    def name(self):
+        return self.get_desc("name")
+
+    @property
+    def uuid(self):
+        return self.get_desc("uuid")
 
     @property
     def image(self):
@@ -158,11 +176,13 @@ class Sprite_Animation(Sprite):
 ### --------------------------------------------------
 
 class Sprite_Shape(Sprite):
-    def __init__(self, name=""):
+    def __init__(self, name="", rect=None, shape_colours=None, shape="Rectangle"):
         super().__init__(name)
         self.clear_colours()
         self._shape = "Rectangle"
         self._pointlist = None
+        if rect is not None:
+            self.setup_shape(rect, shape_colours, shape)
 
     @property
     def colours(self):
@@ -502,26 +522,30 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
                 ret_sprite = s
         return ret_sprite
 
-    def find_sprites_by_name(self, name):
+    def find_sprites_by_desc(self, attribute, value):
         ret_sprites = []
         for s in self.sprites():
-            if s.name == name:
+            if s.get_desc(attribute) == value:
                 ret_sprites.append(s)
         return ret_sprites
 
+    def find_sprites_by_name(self, name):
+        return self.find_sprites_by_desc("name", name)
+
     def find_sprite_by_uuid(self, uuid):
-        ret_sprite = None
-        for s in self.sprites():
-            if s.uuid == uuid:
-                ret_sprite = s
-        return ret_sprite
+        result = self.find_sprites_by_desc("uuid", uuid)
+        if len(result) == 0:
+            return None
+        else:
+            return result[0]
 
     def kill_uuid(self, uuid):
         found = False
-        s = self.find_sprite_by_uuid(uuid)
-        if s is not None:
-            found = True
-            s.kill()
+        if uuid is not None:
+            s = self.find_sprite_by_uuid(uuid)
+            if s is not None:
+                found = True
+                s.kill()
         return found
 
     def event(self, e):
@@ -531,6 +555,9 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
                 x, y = e.info['pos']
                 sprite_str = self.find_click(x,y,(e.action == "MouseLeftClick"))
                 dealt_with = (sprite_str != "")
+            elif e.action == "KillSpriteUUID":
+                self.kill_uuid(e.uuid)
+                dealt_with = True
         return dealt_with
 
     def cleanup(self):
