@@ -1,4 +1,4 @@
-from PyGameApp import *
+from cdkkPyGameApp import *
 
 anim = Animation_Counter()
 anim.setup(5, ANIMATE_LOOP, 3)
@@ -24,7 +24,6 @@ for i in range(50):
     anim.next_loop()
     sequence.append(anim.current_image)
 print(sequence)
-
 
 anim.setup(5, ANIMATE_LOOP+ANIMATE_REVERSE, 3)
 print("--- ANIMATE_LOOP + ANIMATE_REVERSE ---")

@@ -1,8 +1,6 @@
 import pygame
 import os 
-from PyGameSprite import *
-from PyGameUtils import *
-from colour_constants import *
+from cdkkSprite import *
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 

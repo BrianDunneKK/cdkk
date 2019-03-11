@@ -2,8 +2,8 @@
 
 import pygame
 import uuid
-from PyGameUtils import *
-from colour_constants import *
+from cdkkUtils import *
+from cdkkColours import *
 
 class Sprite(pygame.sprite.Sprite):
     def __init__(self, name=""):
@@ -282,7 +282,7 @@ class Sprite_TextBox(Sprite_Shape):
         self._format_string = None
         self._colour_text = None
         self._auto_size = auto_size
-        self._align_horiz = -1  # -1=Left; 0=Centre; 1=Right
+        self._align_horiz = 0   # -1=Left; 0=Centre; 1=Right
         self._align_vert  = 0   # -1=Top; 0=Middle; 1=Bottom
 
     def setup_textbox(self, width, height, text_colour="black", text_size=36, box_colours=None):
@@ -291,9 +291,8 @@ class Sprite_TextBox(Sprite_Shape):
         self.rect.height = height
         self.setup_text(text_size, text_colour)
 
-    def setup_text(self, textsize, textcolour="black", format_string="{0}", fontfile=None):
-        if self._text is None:
-            self._text = ""
+    def setup_text(self, textsize, textcolour="black", format_string="{0}", fontfile=None, text=""):
+        self.text = text
         self._font = pygame.font.Font(None, textsize)
         self.text_format = format_string
         self._colour_text = colours[textcolour]
@@ -607,14 +606,9 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
 ### --------------------------------------------------
 
 class SpriteGroup(pygame.sprite.Group):
-    @property
-    def sprites_uuid_rect(self):
-        ur = []
-        for s in self.sprites():
-            ur.append((s.uuid, s.rect))
-        return ur
-
     def collide(self, sprite_group, dokilla=False, dokillb=False, collided=pygame.sprite.collide_mask):
         coll_dict = pygame.sprite.groupcollide(self, sprite_group, dokilla, dokillb, collided)
         # logger.debug("Collide: {0} with {1}".format("A", "B"))
         return coll_dict
+
+### --------------------------------------------------

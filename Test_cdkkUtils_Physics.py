@@ -1,4 +1,4 @@
-from PyGameApp import *
+from cdkkPyGameApp import *
 
 ### --------------------------------------------------
 
