@@ -2,6 +2,23 @@ from cdkkSprite import *
 
 ### --------------------------------------------------
 
+class Sprite_GameOver(Sprite_TextBox):
+    def __init__(self, rect, text="Game Over", font_size=72, font_colour="red3"):
+        super().__init__("Game Over", auto_size=False)
+        self.setup_text(font_size, font_colour, text=text)
+        self.rect = rect.copy()
+
+### --------------------------------------------------
+
+class Sprite_DynamicText(Sprite_TextBox):
+    def __init__(self, name, rect, format_string, font_size=36, font_colour="black"):
+        super().__init__(name, auto_size=False)
+        self.setup_textbox(rect.width, rect.height)
+        self.setup_text(font_size, font_colour, format_string)
+        self.rect.topleft = rect.topleft
+
+### --------------------------------------------------
+
 class Sprite_BoardGame_Board(Sprite_Shape):
     def __init__(self, name="Board"):
         super().__init__(name)
