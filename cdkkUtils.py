@@ -711,6 +711,12 @@ EVENT_NEXT_USER_EVENT = pygame.USEREVENT + 4
 #             value - Delta value for IncreaseScore
 
 class EventManager:
+    def info_to_str(e):
+        strlist = []
+        for k, v in e.info.items():
+            strlist.append(str(k) + "=" + str(v))
+        return ", ".join(strlist)
+
     def get():
         ev_list = pygame.event.get()
         return ev_list
@@ -754,6 +760,14 @@ class EventManager:
 
     def user_event(self, event_type, action):
         self._user_event[event_type] = action
+
+    def event_map(self, key_event_map=None, user_event_map=None):
+        if key_event_map is not None:
+            for event_type, action in key_event_map.items():
+                self.keyboard_event(event_type, action)       
+        if user_event_map is not None:
+            for event_type, action in user_event_map.items():
+                self.user_event(event_type, action)
 
     def event(self, e, ignore_keys=False):
         dealt_with = False

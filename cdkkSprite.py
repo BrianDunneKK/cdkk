@@ -441,8 +441,7 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
                 sprite_str = self.find_click(x,y,(e.action == "MouseLeftClick"))
                 dealt_with = (sprite_str != "")
             elif e.action == "KillSpriteUUID":
-                self.kill_uuid(e.uuid)
-                dealt_with = True
+                dealt_with = self.kill_uuid(e.info['uuid'])
         return dealt_with
 
     def cleanup(self):
