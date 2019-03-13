@@ -638,7 +638,6 @@ class Timer():
         self._start_time = pygame.time.get_ticks()
         if self._timer_event != None:
             pygame.time.set_timer(self._timer_event, int(self._timer_value))
-
     
     def stop(self):
         self._stop_time = pygame.time.get_ticks()
@@ -647,6 +646,10 @@ class Timer():
     def stop_event(self):
         if self._timer_event != None:
             pygame.time.set_timer(self._timer_event, 0)
+
+    def clear(self):
+        self._start_time = pygame.time.get_ticks()
+        self._stop_time = pygame.time.get_ticks()
 
     @property
     def time(self):
@@ -666,6 +669,8 @@ class Timer():
 
     def extend_timer(self, increase_secs):
         self._timer_value = self._timer_value + increase_secs * 1000.0
+        self.stop_event()
+        self.start()
 
 ### --------------------------------------------------
 

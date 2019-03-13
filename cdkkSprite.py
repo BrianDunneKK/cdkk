@@ -16,6 +16,7 @@ class Sprite(pygame.sprite.Sprite):
         self.event_on_click = None
         self.event_on_unclick = None
         self._draw_reqd = False
+        self._game_active = None
 
     def get_desc(self, attribute, no_value=None):
         if attribute in self._desc:
@@ -33,6 +34,10 @@ class Sprite(pygame.sprite.Sprite):
     @property
     def uuid(self):
         return self.get_desc("uuid")
+
+    @property
+    def game_is_active(self):
+        return self._game_active
 
     @property
     def image(self):
@@ -86,17 +91,23 @@ class Sprite(pygame.sprite.Sprite):
             logger.error("Sprite.setup_mouse_events(): event_on_unclick must be of type Event")
         self.event_on_unclick = event_on_unclick
 
+    def create_mask(self):
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def collide(self, sprite_group, collided=pygame.sprite.collide_mask):
+        return pygame.sprite.spritecollide(self, sprite_group, dokill=False, collided=pygame.sprite.collide_mask)
+
     def draw(self, force_draw=False):
         pass
 
     def slow_update(self):
         pass
 
-    def create_mask(self):
-        self.mask = pygame.mask.from_surface(self.image)
+    def start_game(self):
+        self._game_active = True
 
-    def collide(self, sprite_group, collided=pygame.sprite.collide_mask):
-        return pygame.sprite.spritecollide(self, sprite_group, dokill=False, collided=pygame.sprite.collide_mask)
+    def end_game(self):
+        self._game_active = False
 
 ### --------------------------------------------------
 
@@ -394,6 +405,11 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
     def __init__(self, name):
         super().__init__()
         self.name = name
+        self._game_active = None
+
+    @property
+    def game_is_active(self):
+        return self._game_active
 
     def draw(self, surface):
         for s in self.sprites():
@@ -433,19 +449,9 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
                 s.kill()
         return found
 
-    def event(self, e):
-        dealt_with = False
-        if e.type == EVENT_GAME_CONTROL:
-            if e.action == "MouseLeftClick" or e.action == "MouseUnclick":
-                x, y = e.info['pos']
-                sprite_str = self.find_click(x,y,(e.action == "MouseLeftClick"))
-                dealt_with = (sprite_str != "")
-            elif e.action == "KillSpriteUUID":
-                dealt_with = self.kill_uuid(e.info['uuid'])
-        return dealt_with
-
-    def cleanup(self):
-        pass
+    def kill_sprites(self, sprite_list):
+        for s in sprite_list:
+            s.kill()
 
     def find_collisions(self):
         sprite_dict = pygame.sprite.groupcollide(self, self, False, False)
@@ -484,9 +490,38 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
             if type(p).__name__ == sprite_class:
                 self.remove(p)
 
+    def event(self, e):
+        dealt_with = False
+        if e.type == EVENT_GAME_CONTROL:
+            if e.action == "MouseLeftClick" or e.action == "MouseUnclick":
+                x, y = e.info['pos']
+                sprite_str = self.find_click(x,y,(e.action == "MouseLeftClick"))
+                dealt_with = (sprite_str != "")
+            elif e.action == "KillSpriteUUID":
+                dealt_with = self.kill_uuid(e.info['uuid'])
+            elif e.action == "GameOver":
+                self.end_game()
+            elif e.action == "StartGame":
+                self.start_game()
+        return dealt_with
+
+    def cleanup(self):
+        pass
+
     def slow_update(self):
         for s in self.sprites():
             s.slow_update()
+
+    def start_game(self):
+        self._game_active = True
+        for s in self.sprites():
+            s.start_game()
+
+    def end_game(self):
+        for s in self.sprites():
+            s.end_game()
+        self._game_active = False
+
 
 ### --------------------------------------------------
 
