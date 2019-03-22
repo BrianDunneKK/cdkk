@@ -18,6 +18,19 @@ logger = logging.getLogger()
 
 ### --------------------------------------------------
 
+def merge_dicts(*dict_args):
+    """
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    """
+    result = {}
+    for dictionary in dict_args:
+        if dictionary is not None:
+            result.update(dictionary)
+    return result
+    
+### --------------------------------------------------
+
 # Sprite bounces on its ...
 BOUNCE_LEFT = 1
 BOUNCE_RIGHT = 2
@@ -478,7 +491,7 @@ class Physics:
                 if (at_limit_x & AT_LIMIT_LEFT > 0):
                     motion.position_x = limit.rect.left - self.rect_width
                 if (at_limit_x & AT_LIMIT_RIGHT > 0):
-                    motion.position_x = limit.rect.left
+                    motion.position_x = limit.rect.right
 
             if limit.limit_type == LIMIT_OVERLAP:
                 if (at_limit_x & AT_LIMIT_LEFT > 0) or (at_limit_x & AT_LIMIT_RIGHT > 0):
@@ -597,7 +610,9 @@ class Physics:
 
 ### --------------------------------------------------
 
-class MovingRect(pygame.Rect, Physics):
+cdkkRect = pygame.Rect
+
+class MovingRect(cdkkRect, Physics):
     def __init__(self):
         Physics.__init__(self)
         self.topleft = (0,0)
