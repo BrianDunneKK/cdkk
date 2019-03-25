@@ -28,6 +28,10 @@ class PyGameApp:
     def loops_per_sec(self):
         return self._loop_timer.loops_per_sec
 
+    @property
+    def loop_counter(self):
+        return self._loop_timer.loops
+
     def init(self, size=(1000,700), fullscreen=False):
         pygame.init()
         if size is not None:

@@ -7,7 +7,6 @@ class Sprite_Label(Sprite_TextBox):
 
     def __init__(self, name_text="", rect=None, style=None):
         super().__init__(name_text, rect, style=merge_dicts(Sprite_Label.default_style, style), auto_size=True, name_is_text=True)
-        self.draw(True)
 
 ### --------------------------------------------------
 
@@ -29,10 +28,12 @@ class Sprite_Button(Sprite_TextBox):
 ### --------------------------------------------------
 
 class Sprite_GameOver(Sprite_TextBox):
-    default_style = { "textcolour":"red3", "textsize":72, "fillcolour":"yellow1" }
+    default_style = { "textcolour":"red3", "textsize":72, "fillcolour":"yellow1", "outlinecolour":"red3", "outlinewidth":5, "width":400, "height":100}
 
     def __init__(self, rect, style=None):
         super().__init__("Game Over", rect, style=merge_dicts(Sprite_GameOver.default_style, style), auto_size=False)
+        self.style_to_size()
+        self.rect.center = rect.center
 
 ### --------------------------------------------------
 
@@ -142,8 +143,8 @@ class Sprite_BoardGame_Piece(Sprite_Shape):
         self.rect.topleft = r.topleft
         self.rect.size = r.size
 
-    def draw(self, force_draw=False):
-        if self._draw_reqd or force_draw:
+    def draw(self, draw_flag=Sprite.DRAW_AS_REQD):
+        if self._draw_reqd or draw_flag:
             self._draw_reqd = False
             fill_col = self.get_style_colour("fillcolour")
             line_col = self.get_style_colour("outlinecolour")

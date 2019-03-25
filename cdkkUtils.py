@@ -693,6 +693,7 @@ class LoopTimer():
     def __init__(self, max_loops, auto_start=True):
         self._queue = deque([0] * max_loops, max_loops)
         self._timer = Timer(auto_start=auto_start)
+        self._loop_counter = 0
 
     def start(self):
         self._timer.start()
@@ -702,6 +703,7 @@ class LoopTimer():
             loop_time = self._timer.time_msecs
         self._queue.append(loop_time)
         self._timer.start()
+        self._loop_counter = self._loop_counter + 1
 
     @property
     def msecs_per_loop(self):
@@ -714,6 +716,10 @@ class LoopTimer():
             return 0
         else:
             return 1000.0 / self.msecs_per_loop
+
+    @property
+    def loops(self):
+        return self._loop_counter
 
 ### --------------------------------------------------
 

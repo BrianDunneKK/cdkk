@@ -8,6 +8,10 @@ from cdkkUtils import *
 from cdkkColours import *
 
 class Sprite(pygame.sprite.Sprite):
+    DRAW_AS_REQD = 0
+    DRAW_ALWAYS = 1
+    DRAW_AFTER_CLEAR = 2
+
     def __init__(self, name="", style=None):
         super().__init__()
         self._desc = {}
@@ -19,7 +23,8 @@ class Sprite(pygame.sprite.Sprite):
         self.event_on_unclick = None
         self._draw_reqd = False
         self._game_active = None
-        self._style = style
+        self._style = {}
+        self.update_style(style)
 
     def get_desc(self, attribute, no_value=None):
         if attribute in self._desc:
@@ -45,12 +50,29 @@ class Sprite(pygame.sprite.Sprite):
 
     def set_style(self, attribute, new_value):
         self._style[attribute] = new_value
+        self._draw_reqd = True
+        if attribute == "width" or attribute == "height":
+            self.style_to_size()
 
     def update_style(self, *updated_styles):
         for s in updated_styles:
             if s is not None:
                 self._style.update(s)
+                for key in s:
+                    if key == "width" or key == "height":
+                        self.style_to_size()
         self._draw_reqd = True
+
+    def style_to_size(self):
+        w = self.get_style("width")
+        h = self.get_style("height")
+        if w is not None:
+            self.rect.width = w
+        if h is not None:
+            self.rect.height = h
+        if w is not None or h is not None:
+            self.image = self.create_surface()
+            self._image_size_to_rect()
 
     @property
     def name(self):
@@ -99,6 +121,7 @@ class Sprite(pygame.sprite.Sprite):
             self.create_mask()
 
     def create_surface(self, width=None, height=None, per_pixel_alpha=True):
+        # logger.debug("create_surface()")
         if width is None:
             width = self.rect.width
         if height is None:
@@ -126,10 +149,19 @@ class Sprite(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
     def collide(self, sprite_group, collided=pygame.sprite.collide_mask):
-        return pygame.sprite.spritecollide(self, sprite_group, dokill=False, collided=pygame.sprite.collide_mask)
+        group2 = SpriteGroup()
+        for s in sprite_group:
+            if s.image is not None:
+                group2.add(s)
 
-    def draw(self, force_draw=False):
-        pass
+        return pygame.sprite.spritecollide(self, group2, dokill=False, collided=collided)
+
+    def draw(self, draw_flag=DRAW_AS_REQD, clear_draw_reqd=True):
+        if self.image is None or draw_flag == Sprite.DRAW_AFTER_CLEAR:
+            self.image = self.create_surface()
+            self._image_size_to_rect()
+        if clear_draw_reqd:
+            self._draw_reqd = False
 
     def slow_update(self):
         pass
@@ -191,12 +223,15 @@ class Sprite_Animation(Sprite):
             self._anim_config.setup(len(self._animations[new_animation]), mode, loops_per_image)
             self._draw_reqd = True
 
-    def draw(self, force_draw=False):
-        if self._draw_reqd or force_draw:
+    def draw(self, draw_flag=Sprite.DRAW_ALWAYS, clear_draw_reqd=True):
+        super().draw(draw_flag, clear_draw_reqd=False)
+        if self._draw_reqd or draw_flag > Sprite.DRAW_AS_REQD:
             anim_name = self._anim_name
             if (anim_name != ""):
                 if self._anim_config.next_loop():
                     self.image = self._animations[anim_name][self._anim_config.current_image]
+        if clear_draw_reqd:
+            self._draw_reqd = False
 
     def create_mask_anim(self, using_animation, using_frame):
         reset_animation = None
@@ -224,7 +259,11 @@ class Sprite_Shape(Sprite):
     default_style = {
         "fillcolour":"white", "outlinecolour":"black", "outlinewidth":3,
         "altcolour":"black", "highlightcolour":"yellow", "shape":"Rectangle",
-        "shapewidth":None, "shapeheight":None }
+        "width":None, "height":None }
+    invisible_style = {
+        "fillcolour":None, "outlinecolour":None, "outlinewidth":0,
+        "altcolour":None, "highlightcolour":None, "shape":"Rectangle",
+        "width":None, "height":None }
 
     def __init__(self, name="", rect=None, style=None):
         super().__init__(name, style=merge_dicts(Sprite_Shape.default_style, style))
@@ -232,16 +271,7 @@ class Sprite_Shape(Sprite):
         if rect is not None:
             self.rect.topleft = rect.topleft
             self.rect.size = rect.size
-        self.style_to_size()
         self._draw_reqd = True
-
-    def style_to_size(self):
-        w = self.get_style("shapewidth")
-        h = self.get_style("shapeheight")
-        if w is not None:
-            self.rect.width = w
-        if h is not None:
-            self.rect.height = h
 
     @property
     def shape(self):
@@ -258,7 +288,7 @@ class Sprite_Shape(Sprite):
 
     def create_canvas(self, width=None, height=None):
         self.image = self.create_surface(width, height, True)
-        self.rect.size = self.image.get_size()
+        self._image_size_to_rect()
         self._draw_reqd = True
 
     def swap_colours(self):
@@ -267,13 +297,9 @@ class Sprite_Shape(Sprite):
         self.set_style("altcolour", c)
         self._draw_reqd = True
 
-    def draw(self, force_draw=False):
-        if self._draw_reqd or force_draw:
-            self.style_to_size()
-    
-            if self.image is None:
-                self.create_canvas()
-
+    def draw(self, draw_flag=Sprite.DRAW_AS_REQD, clear_draw_reqd=True):
+        super().draw(draw_flag, clear_draw_reqd=False)
+        if self._draw_reqd or draw_flag>Sprite.DRAW_AS_REQD:
             draw_rect = self.rect.copy()
             draw_rect.topleft = (0,0)
             fill_col = self.get_style_colour("fillcolour")
@@ -298,6 +324,7 @@ class Sprite_Shape(Sprite):
                 if (line_col is not None):
                     pygame.draw.rect(self.image, line_col, draw_rect, self.get_style("outlinewidth"))
            
+        if clear_draw_reqd:
             self._draw_reqd = False
 
 ### --------------------------------------------------
@@ -305,7 +332,7 @@ class Sprite_Shape(Sprite):
 class Sprite_TextBox(Sprite_Shape):
     default_style = { "textcolour":"black", "textsize":36, "align_horiz":"C", "align_vert":"M", "textformat":"{0}" }
 
-    def __init__(self, name_text="", rect=None, style=None, auto_size=True, name_is_text=True):
+    def __init__(self, name_text="", rect=None, style=None, auto_size=False, name_is_text=True):
         super().__init__(name_text, rect, style=merge_dicts(Sprite_TextBox.default_style, style))
         if name_is_text:
             self._text = name_text
@@ -313,7 +340,9 @@ class Sprite_TextBox(Sprite_Shape):
             self._text = None
         self._font = None
         self._auto_size = auto_size
-        self.style_to_size()
+        if rect is not None:
+            if rect.width > 0 and rect.height > 0:
+                self._auto_size = False
         self._draw_reqd = True
 
     @property
@@ -355,37 +384,38 @@ class Sprite_TextBox(Sprite_Shape):
             self._font = pygame.font.Font(None, self.get_style("textsize"))
         return self._font
 
-    def draw(self, force_draw=False):
-        if self._draw_reqd or force_draw:
-            self.style_to_size()
-            self.create_canvas()
-            if self.rect.width == 0:
-                self.image = self.font.render(self.text, True, self.get_style_colour("textcolour"))
-                if self._auto_size:
-                    self._image_size_to_rect()
-            else:
-                super().draw(force_draw)
-                text_image = self.font.render(self.text, True, self.get_style_colour("textcolour"))
-                text_rect = text_image.get_rect()
-                if self._auto_size and (text_rect.width > self.rect.width or text_rect.height > self.rect.height):
-                    self.rect.width = text_rect.width
-                    self.rect.height = text_rect.height
+    def draw(self, draw_flag=Sprite.DRAW_AS_REQD, clear_draw_reqd=True):
+        super().draw(draw_flag, clear_draw_reqd=False)
+        if self._draw_reqd or draw_flag>Sprite.DRAW_AS_REQD:
+            text_image = self.font.render(self.text, True, self.get_style_colour("textcolour"))
+            text_rect = text_image.get_rect()
 
-                if self.get_style("align_horiz") == "L":
-                    text_rect.left = 0
-                elif self.get_style("align_horiz") == "C":
-                    text_rect.centerx = self.rect.width/2
-                elif self.get_style("align_horiz") == "R":
-                    text_rect.right = self.rect.width
-                
-                if self.get_style("align_vert") == "T":
-                    text_rect.top = 0
-                elif self.get_style("align_vert") == "M":
-                    text_rect.centery = self.rect.height/2
-                elif self.get_style("align_vert") == "B":
-                    text_rect.bottom = self.rect.height
-                
-                self.image.blit(text_image, text_rect)
+            if self._auto_size:
+                self.image = self.create_surface(text_rect.width, text_rect.height)
+                self._image_size_to_rect()
+                super().draw(Sprite.DRAW_ALWAYS, clear_draw_reqd=False)
+
+            if self.get_style("fillcolour") is None:
+                self.image = self.create_surface()
+                super().draw(Sprite.DRAW_ALWAYS, clear_draw_reqd=False)
+
+            if self.get_style("align_horiz") == "L":
+                text_rect.left = 0
+            elif self.get_style("align_horiz") == "C":
+                text_rect.centerx = self.rect.width/2
+            elif self.get_style("align_horiz") == "R":
+                text_rect.right = self.rect.width
+            
+            if self.get_style("align_vert") == "T":
+                text_rect.top = 0
+            elif self.get_style("align_vert") == "M":
+                text_rect.centery = self.rect.height/2
+            elif self.get_style("align_vert") == "B":
+                text_rect.bottom = self.rect.height
+            
+            self.image.blit(text_image, text_rect)
+
+        if clear_draw_reqd:
             self._draw_reqd = False
 
 ### --------------------------------------------------
@@ -409,7 +439,7 @@ class Sprite_ShapeSetManager(pygame.sprite.LayeredUpdates):
     def draw_shapes(self, image):
         for s in self.sprites():
             s.image = image
-            s.draw(force_draw=True)
+            s.draw()
 
 ### --------------------------------------------------
 
