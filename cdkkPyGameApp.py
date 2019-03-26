@@ -1,3 +1,4 @@
+# To Do: Add start_game() and end_game() - call for each SpriteManager
 import pygame
 import os 
 from cdkkSprite import *
@@ -5,20 +6,49 @@ from cdkkSprite import *
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 class PyGameApp:
-    def __init__(self):
+    default_config = {
+        "caption":"CoderDojo Kilkenny",
+        "width":1000,
+        "height":700,
+        "full_screen":False,
+        "background_fill": None,
+        "frame_rate":100,
+        "slow_update_time":321, # msecs
+        "scroll_time":None,     # msecs or None
+        "key_repeat_time":None  # msecs or None
+        }
+
+    def __init__(self, style=None):
         self._running = True
-        self._size = self._width, self._height = 1000, 700
         self._sprite_mgrs = {}
         self.display_surface = None
-        self.framerate = 100
-        self.background_fill = None
         self.event_mgr = EventManager()
         self._fast_keys = False
         self._key_interval = 0
         self._key_timer = None
-        self._slow_update_min = 321  # msecs
-        self._slow_update_timer = Timer(self._slow_update_min/1000.0)
+        self._slow_update_timer = None
         self._loop_timer = LoopTimer(20)
+        self._scroll_timer = None
+        self._config = {}
+        self.update_config(merge_dicts(PyGameApp.default_config, style))
+        self._width = self.get_config("width")
+        self._height = self.get_config("height")
+        self._size = (self._width, self._height)
+
+    def get_config(self, attribute, default=None):
+        return self._config.get(attribute, default)
+
+    def set_config(self, attribute, new_value):
+        if attribute is not None:
+            self._config[attribute] = new_value
+            if attribute == "slow_update_time":
+                self._slow_update_timer = Timer(new_value/1000.0)
+
+    def update_config(self, *updated__configs):
+        for cfg in updated__configs:
+            if cfg is not None:
+                for key, value in cfg.items():
+                    self.set_config(key, value)
 
     @property
     def boundary(self):
@@ -32,11 +62,9 @@ class PyGameApp:
     def loop_counter(self):
         return self._loop_timer.loops
 
-    def init(self, size=(1000,700), fullscreen=False):
+    def init(self):
         pygame.init()
-        if size is not None:
-            self._size = self._width, self._height = size
-        if fullscreen:
+        if self.get_config("full_screen"):
             display_modes = pygame.display.list_modes()
             self._width, self._height = display_modes[0]
             self._width = self._width - 2
@@ -44,12 +72,16 @@ class PyGameApp:
             self._size = (self._width, self._height)
         self.display_surface = pygame.display.set_mode(self._size)
 
-        if not fullscreen:
-            self.display_surface = pygame.display.set_mode(self._size)
-        # else:
-        #     self.display_surface = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-        #     self._size = self._width, self._height = self.display_surface.get_size()
-        #     #self.display_surface = pygame.display.set_mode(self._size, pygame.HWSURFACE | pygame.DOUBLEBUF)
+        if self.get_config("caption") is not None:
+            pygame.display.set_caption(self.get_config("caption"))
+
+        if self.get_config("key_repeat_time") is not None:
+            self.set_fast_keys(self.get_config("key_repeat_time"))
+
+        if self.get_config("scroll_time") is not None:
+            self._scroll_timer = Timer(self.get_config("scroll_time")/1000.0, EVENT_SCROLL_GAME)
+            self.event_mgr.user_event(EVENT_SCROLL_GAME, "ScrollGame")
+
         self._clock = pygame.time.Clock()
         self._running = True
 
@@ -68,8 +100,7 @@ class PyGameApp:
         return sm.sprite(sprite_name)
 
     def set_fast_keys(self, repeat_msecs):
-        # Handle multiple keys pressed at once
-        # Repeat key every repeat_msecs
+        # Handle multiple keys pressed at once. Repeat key every repeat_msecs
         self._fast_keys = True
         self._key_interval = repeat_msecs
         self._key_timer = Timer(repeat_msecs/1000.0, EVENT_READ_KEYBOARD)
@@ -93,8 +124,8 @@ class PyGameApp:
         return dealt_with
 
     def draw(self, flip=True):
-        if (self.background_fill != None):
-            self.display_surface.fill(colours[self.background_fill])
+        if self.get_config("background_fill") is not None:
+            self.display_surface.fill(colours[self.get_config("background_fill")])
         for sm in self._sprite_mgrs:
             sm.draw(self.display_surface)  # Ask each sprite manager to draw its sprites
         if flip:
@@ -123,7 +154,7 @@ class PyGameApp:
                 self.event(event)
             self.update()
             self.draw()
-            self._clock.tick(self.framerate)
+            self._clock.tick(self.get_config("frame_rate"))
             self._loop_timer.append()
             
         self.cleanup()

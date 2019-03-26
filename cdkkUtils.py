@@ -1,3 +1,5 @@
+# To Do: Implement bounce_cor per limit, for x & y
+
 import pygame
 import math
 from collections import deque
@@ -724,10 +726,11 @@ class LoopTimer():
 ### --------------------------------------------------
 
 EVENT_READ_KEYBOARD   = pygame.USEREVENT
-EVENT_GAME_CONTROL    = pygame.USEREVENT + 1
-EVENT_GAME_TIMER_1    = pygame.USEREVENT + 2
-EVENT_GAME_TIMER_2    = pygame.USEREVENT + 3
-EVENT_NEXT_USER_EVENT = pygame.USEREVENT + 4
+EVENT_SCROLL_GAME     = pygame.USEREVENT + 1
+EVENT_GAME_CONTROL    = pygame.USEREVENT + 2
+EVENT_GAME_TIMER_1    = pygame.USEREVENT + 3
+EVENT_GAME_TIMER_2    = pygame.USEREVENT + 4
+EVENT_NEXT_USER_EVENT = pygame.USEREVENT + 5
 
 # Game Control Actions
 #   e.action: StartGame, GameOver, QuitGame, Board, Pass, Hint, ClearHint, Print, IncreaseScore, KillSpriteUUID,
@@ -886,7 +889,7 @@ ANIMATE_REVERSE      = 8  # Add to other modes
 
 class Animation_Counter:
     def __init__(self):
-        self.msecs_per_image = None  # To Do
+        self.msecs_per_image = None
         self.setup(0, ANIMATE_LOOP, 10)
 
     def setup(self, total, mode, loops_per_image=10):
