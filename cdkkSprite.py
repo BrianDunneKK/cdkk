@@ -3,7 +3,9 @@
 # To Do: Change remove_by_class() to find_sprites_by_desc()
 
 import pygame
+import pygame.gfxdraw
 import uuid
+from math import sin, cos
 from cdkkUtils import *
 from cdkkColours import *
 
@@ -18,7 +20,7 @@ class Sprite(pygame.sprite.Sprite):
         self.set_desc("name", name)
         self.set_desc("uuid", uuid.uuid4())
         self.rect = MovingRect()
-        self._image = None
+        self._image = cdkkImage()
         self.event_on_click = None
         self.event_on_unclick = None
         self._draw_reqd = False
@@ -88,11 +90,11 @@ class Sprite(pygame.sprite.Sprite):
 
     @property
     def image(self):
-        return self._image
+        return self._image.surface
 
     @image.setter
     def image(self, new_image):
-        self._image = new_image
+        self._image.surface = new_image
         self._draw_reqd = True
 
     def _image_size_to_rect(self):
@@ -114,8 +116,15 @@ class Sprite(pygame.sprite.Sprite):
             ret_image = pygame.transform.smoothscale(ret_image, scale_to)
         return ret_image
 
-    def load_image(self, filename, crop=None, create_mask=True):
-        self.image = self._load_image_from_file(filename, crop)
+    def load_image(self, filename, crop=None, scale_to=None, create_mask=True):
+        if scale_to == "style":
+            w = self.get_style("width")
+            h = self.get_style("height")
+            if w is None or h is None:
+                scale_to = None
+            else:
+                scale_to = (w, h)
+        self._image.load(filename, crop, scale_to)
         self._image_size_to_rect()
         if create_mask:
             self.create_mask()
@@ -192,23 +201,18 @@ class Sprite_Animation(Sprite):
         if create_mask:
             self.create_mask()
 
-    def load_spritesheet(self, set_name, spritesheet_filename, cols, rows, create_mask=True, set_anim=False):
+    def load_spritesheet(self, set_name, spritesheet_filename, cols, rows, create_mask=True, set_anim=False, start=None, end=None):
         self._animations[set_name] = []
-        spritesheet = self._load_image_from_file(spritesheet_filename)
-        ss_width = spritesheet.get_rect().width
-        ss_height = spritesheet.get_rect().height
-        sprite_width = ss_width // cols
-        sprite_height = ss_height // rows
-        
-        for i in range(rows):
-            y = sprite_height * i
-            for j in range(cols):
-                x = sprite_width * j
-                rect = cdkkRect(x, y, sprite_width, sprite_height)
-                image = self.create_surface(sprite_width, sprite_height)
-                rect = image.blit(spritesheet, (0, 0), rect)
-                self._animations[set_name].append(image)
-        
+        if start is None:
+            start = 0
+        if end is None:
+            end = cols*rows
+
+        spritesheet = cdkkImage()
+        spritesheet.set_spritesheet(spritesheet_filename, cols, rows)
+        for i in range(start,end):
+            self._animations[set_name].append(spritesheet.spritesheet_image(i))
+
         self.image = self._animations[set_name][0]
         self._image_size_to_rect()
         if create_mask:
@@ -268,6 +272,7 @@ class Sprite_Shape(Sprite):
     def __init__(self, name="", rect=None, style=None):
         super().__init__(name, style=merge_dicts(Sprite_Shape.default_style, style))
         self._pointlist = None
+        self._pie_angles = None
         if rect is not None:
             self.rect.topleft = rect.topleft
             self.rect.size = rect.size
@@ -279,11 +284,22 @@ class Sprite_Shape(Sprite):
 
     @shape.setter
     def shape(self, new_shape):
-        # Rectangle, Ellipse, Polygon
+        # Rectangle, Ellipse, Polygon, Arc
         self.set_style("shape", new_shape)
 
     def setup_polygon(self, pointlist):
         self._pointlist = pointlist.copy()
+        self._draw_reqd = True
+
+    def setup_pie(self, start_angle, stop_angle):
+        self._pie_angles = [start_angle * 3.14159 / 180, stop_angle * 3.14159 / 180]
+        x0 = self.rect.width/2
+        y0 = self.rect.height/2
+
+        ndiv = 360
+        delta = (self._pie_angles[1] - self._pie_angles[0]) / ndiv
+        angles = [self._pie_angles[0] + i*delta for i in range(ndiv + 1)]
+        self._pointlist = [(x0, y0)] + [(x0 + self.rect.width/2 * cos(theta), y0 - self.rect.width/2 * sin(theta)) for theta in angles]
         self._draw_reqd = True
 
     def create_canvas(self, width=None, height=None):
@@ -305,13 +321,19 @@ class Sprite_Shape(Sprite):
             fill_col = self.get_style_colour("fillcolour")
             line_col = self.get_style_colour("outlinecolour")
 
-            if self.shape == "Ellipse":
+            if self.shape.lower() == "ellipse":
                 if (fill_col is not None):
                     pygame.draw.ellipse(self.image, fill_col, draw_rect)
                 if (line_col is not None):
                     pygame.draw.ellipse(self.image, line_col, draw_rect, self.get_style("outlinewidth"))
 
-            elif self.shape == "Polygon":
+            # elif self.shape.lower() == "arc":
+            #     if (fill_col is not None):
+            #         pygame.gfxdraw.pie(self.image, draw_rect.centerx, draw_rect.centery, draw_rect.width//2, self._arc_angles[0], self._arc_angles[1], (255,255,0))
+            #     if (line_col is not None):
+            #         pygame.draw.arc(self.image, line_col, draw_rect, self._arc_angles[0], self._arc_angles[1], self.get_style("outlinewidth"))
+
+            elif self.shape.lower() == "polygon" or self.shape.lower() == "pie":
                 if self._pointlist is not None:
                     if (fill_col is not None):
                         pygame.draw.polygon(self.image, fill_col, self._pointlist)
@@ -541,10 +563,6 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
                 dealt_with = (sprite_str != "")
             elif e.action == "KillSpriteUUID":
                 dealt_with = self.kill_uuid(e.info['uuid'])
-            elif e.action == "GameOver":
-                self.end_game()
-            elif e.action == "StartGame":
-                self.start_game()
         return dealt_with
 
     def cleanup(self):

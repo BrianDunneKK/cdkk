@@ -1,4 +1,3 @@
-# To Do: Add start_game() and end_game() - call for each SpriteManager
 import pygame
 import os 
 from cdkkSprite import *
@@ -15,11 +14,12 @@ class PyGameApp:
         "frame_rate":100,
         "slow_update_time":321, # msecs
         "scroll_time":None,     # msecs or None
-        "key_repeat_time":None  # msecs or None
+        "key_repeat_time":None, # msecs or None
+        "auto_start":True       # Automatically start game
         }
 
     def __init__(self, style=None):
-        self._running = True
+        self._game_status = 0   # 0=Pre-init, 1=Initialised, 2=Game-in-progess, 3=Game over, 8=Fail-and-exit, 9=Quitting
         self._sprite_mgrs = {}
         self.display_surface = None
         self.event_mgr = EventManager()
@@ -83,7 +83,7 @@ class PyGameApp:
             self.event_mgr.user_event(EVENT_SCROLL_GAME, "ScrollGame")
 
         self._clock = pygame.time.Clock()
-        self._running = True
+        self._game_status = 1
 
     def add_sprite_mgr(self, sprite_mgr):
         self._sprite_mgrs[sprite_mgr] = sprite_mgr
@@ -105,23 +105,43 @@ class PyGameApp:
         self._key_interval = repeat_msecs
         self._key_timer = Timer(repeat_msecs/1000.0, EVENT_READ_KEYBOARD)
 
-    def exit_app(self):
-        self._running = False
-
     def event(self, e):
         dealt_with = False
+        is_broadcast = EventManager.is_broadcast(e)
+
         if e.type == pygame.QUIT or (e.type == EVENT_GAME_CONTROL and e.action == "Quit"):
             self.exit_app()
             dealt_with = True
-            
+
+        if not dealt_with and e.type == EVENT_GAME_CONTROL:
+            if e.action == "StartGame":
+                self.start_game()
+                dealt_with = True
+            elif e.action == "GameOver":
+                self.end_game()
+                dealt_with = True
+
         for sm in self._sprite_mgrs:
-            if not dealt_with:
+            if (not dealt_with) or is_broadcast:
                 dealt_with = sm.event(e)  # Ask each sprite manager to deal with the event
 
-        if not dealt_with:
+        if (not dealt_with) or is_broadcast:
             dealt_with = self.event_mgr.event(e, self._fast_keys)
 
         return dealt_with
+
+    def exit_app(self):
+        self._game_status = 9
+
+    def start_game(self):
+        self._game_status = 2
+        for sm in self._sprite_mgrs:
+            sm.start_game()
+
+    def end_game(self):
+        self._game_status = 3
+        for sm in self._sprite_mgrs:
+            sm.end_game()
 
     def draw(self, flip=True):
         if self.get_config("background_fill") is not None:
@@ -147,9 +167,12 @@ class PyGameApp:
  
     def execute(self):
         if self.init() == False:
-            self._running = False
+            self._game_status = 8
  
-        while( self._running ):
+        if self.get_config("auto_start"):
+            self.start_game()
+
+        while self._game_status < 8:
             for event in EventManager.get():
                 self.event(event)
             self.update()

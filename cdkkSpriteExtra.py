@@ -71,6 +71,12 @@ class Sprite_BoardGame_Board(Sprite_Shape):
         self.rect.height = ysize * rows
         self.create_canvas()
 
+        img = None
+        img_file = self.get_style("fillimage")
+        if img_file is not None:
+            img = cdkkImage()
+            img.load(img_file, scale_to=(xsize, ysize))
+
         for i in range(0,cols):
             for j in range (0,rows):
                 r = cdkkRect(i * xsize, j * ysize, xsize, ysize)
@@ -82,10 +88,8 @@ class Sprite_BoardGame_Board(Sprite_Shape):
                         col = self.get_style_colour("fillcolour")
                 if col is not None:
                     pygame.draw.rect(self.image, col, r)
-                img_file = self.get_style("fillimage")
-                if img_file is not None:
-                    img = self._load_image_from_file(img_file, scale_to=(xsize, ysize))
-                    self.image.blit(img, r)
+                if img is not None:
+                    self.image.blit(img.surface, r)
                 line_col = self.get_style_colour("outlinecolour")
                 line_w = self.get_style("outlinewidth")
                 if line_col is not None:
@@ -167,5 +171,123 @@ class Sprite_BoardGame_Piece(Sprite_Shape):
 
     def flip(self):
         self.swap_colours()
+
+### --------------------------------------------------
+
+class Sprite_Grid(Sprite):
+    default_style = {"fillcolour":"black"}
+
+    def __init__(self, name="Grid", style=None):
+        super().__init__(name, style=merge_dicts(Sprite_Shape.invisible_style, Sprite_Grid.default_style, style))
+        self._rows = self._cols = 0
+        self._cell0 = pygame.Rect(0,0,0,0)
+        self._xsize = self._ysize = 0
+
+    def cell_rect(self, col, row):
+        x = self.rect.left + col * self._cell0.width
+        y = self.rect.top + row * self._cell0.height
+        return cdkkRect(x, y, self._cell0.width, self._cell0.height)
+
+    def setup_grid(self, spritesheet, sprites, barriers, xsize, cols, ysize=None, rows=None, event_on_click=None):
+        if ysize == None:
+            ysize = xsize
+        self._xsize = xsize
+        self._ysize = ysize
+
+        if rows == None:
+            rows = cols
+        self._cols = cols
+        self._rows = rows
+        
+        self.rect.width = xsize * cols
+        self.rect.height = ysize * rows
+        self._cell0 = cdkkRect(0, 0, xsize, ysize)
+
+        self.image = self.create_surface()
+        self.event_on_click = event_on_click
+        self._draw_reqd = True
+
+        self._barriers = barriers
+        img = cdkkImage()
+        img.set_spritesheet(spritesheet[0], spritesheet[1], spritesheet[2])
+        for i in range(0,rows):
+            for j in range (0,cols):
+                r = cdkkRect(j * xsize, i * ysize, xsize, ysize)
+                img.spritesheet_image(sprites[i*cols+j], scale_to=(xsize, ysize))
+                self.image.blit(img.surface, r)
+
+    def find_cell(self, x, y, allow_outside=False):
+        col = (x - self.rect.left) // self._cell0.width
+        row = (y - self.rect.top) // self._cell0.height
+        if self.rect.collidepoint(x, y) or allow_outside:
+            return (col, row)
+        else:
+            return (-1, -1)
+
+    def find_cellp(self, x, y, allow_outside=False):
+        col, row = self.find_cell(x, y, True)
+        cell = self.cell_rect(col, row)
+        px = 100.0 * (x - cell.left)/cell.width
+        py = 100.0 * (y - cell.top)/cell.height
+        if self.rect.collidepoint(x, y) or allow_outside:
+            return [col, row, px, py]
+        else:
+            return [-1, -1, 0, 0]
+    
+    def find_barrier(self, col, row, direction):
+        found = False
+        bar_x = col
+        bar_y = row
+
+        if direction == "Right":
+            bar_x = col + 1
+            bar_y = 0
+            while not found:
+                found = (bar_x >= self._cols)
+                if not found:
+                    i = row * self._cols + bar_x
+                    if i>=0 and i<len(self._barriers):
+                        found = self._barriers[i]
+                if not found:
+                    bar_x = bar_x + 1
+        elif direction == "Left":
+            bar_x = col - 1
+            bar_y = 0
+            while not found:
+                found = (bar_x < 0)
+                if not found:
+                    i = row * self._cols + bar_x
+                    if i>=0 and i<len(self._barriers):
+                        found = self._barriers[i]
+                if not found:
+                    bar_x = bar_x - 1
+        elif direction == "Down":
+            bar_y = row + 1
+            bar_x = 0
+            while not found:
+                found = (bar_y > self._rows)
+                if not found:
+                    i = bar_y * self._cols + col
+                    if i>=0 and i<len(self._barriers):
+                        found = self._barriers[i]
+                if not found:
+                    bar_y = bar_y + 1
+        elif direction == "Up":
+            bar_y = row - 1
+            bar_x = 0
+            while not found:
+                found = (bar_y < 0)
+                if not found:
+                    i = bar_y * self._cols + col
+                    if i>=0 and i<len(self._barriers):
+                        found = self._barriers[i]
+                if not found:
+                    bar_y = bar_y - 1
+
+        if found:
+            return (bar_x+bar_y)                    
+        else:
+            return (-1)
+
 
 ### --------------------------------------------------

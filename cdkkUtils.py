@@ -63,6 +63,7 @@ AT_LIMIT_MOVE_TO_XY = 128+256      # At X/Y limit, move to X/Y
 AT_LIMIT_X_DO_NOTHING = 512        # At X limit, do nothing
 AT_LIMIT_Y_DO_NOTHING = 1024       # At Y limit, do nothing
 AT_LIMIT_XY_DO_NOTHING = 512+1024  # At Y limit, do nothing
+AT_LIMIT_STOP = 2048               # At X/Y limit, hold X&Y positions and clear X & Y velocities
 
 # At Limit
 AT_LIMIT_LEFT = 1
@@ -287,8 +288,7 @@ class Physics:
         self._init_pvt_y()
 
     def set_speed_angle(self, speed, angle):
-        self.curr_vel_x = speed * math.cos(math.radians(angle))
-        self.curr_vel_y = speed * math.sin(math.radians(angle))
+        self.set_velocity(speed * math.cos(math.radians(angle)), speed * math.sin(math.radians(angle)))
 
     def set_acceleration(self, xacceleration, yacceleration):
         self._curr_motion.acceleration_x = xacceleration
@@ -346,7 +346,6 @@ class Physics:
         self._init_motion.velocity_y = yvel
         self._start_y_timer()
 
-
     def _start_x_timer(self):
         self._timers[0].start()
 
@@ -363,6 +362,9 @@ class Physics:
 
     def add_limit(self, limit):
         self._limits.append(limit)
+
+    def clear_limits(self):
+        self._limits.clear()
 
     def _calculate_curr_motion(self, dx, dy, use_physics):
         if use_physics:
@@ -576,6 +578,12 @@ class Physics:
         if (action & AT_LIMIT_Y_DO_NOTHING) > 0:
             pass
 
+        # AT_LIMIT_STOP
+        if (action & AT_LIMIT_STOP) > 0 and (at_limit_x > 0 or at_limit_y > 0):
+            self.stop_here_x()
+            self.stop_here_y()
+
+
 
     def _apply_limit(self, limit, use_curr_motion=True):
         at_limit_x, at_limit_y = self._test_limit(limit, use_curr_motion)
@@ -771,8 +779,20 @@ class EventManager:
         return EventManager.create_event(EVENT_GAME_CONTROL, action, **info_items)
         
     def post_game_control(action, **info_items):
+        # if (action == "StartGame" or action == "GameOver" or action == "Quit") and not("broadcast" in info_items):
+        #     ev = EventManager.create_event(EVENT_GAME_CONTROL, action, broadcast=True, **info_items)
+        #     logger.debug("Post (broadcast): " + action)
+        # else:
         ev = EventManager.create_event(EVENT_GAME_CONTROL, action, **info_items)
         EventManager.post(ev)
+
+    def is_broadcast(e):
+        ret = False
+        if "info" in e.dict:
+            if "broadcast" in e.info:
+                if e.info['broadcast']:
+                    ret = True
+        return ret
 
     def set_key_repeat(delay, interval):
         pygame.key.set_repeat(delay, interval)
@@ -976,3 +996,127 @@ class Animation_Counter:
                 self.index = max(self.index - 1, 0)
             else:
                 self.index = min(self.index + 1, self.total - 1)
+
+### --------------------------------------------------
+
+class cdkkImage:
+    def __init__(self):
+        super().__init__()
+        self._surface = None
+        self._spritesheet = None
+        self._ss_cols = 0
+        self._ss_rows = 0
+        self._ss_cell_width = 0
+        self._ss_cell_height = 0
+
+    @property
+    def surface(self):
+        return self._surface
+
+    @surface.setter
+    def surface(self, new_surface):
+        self._surface = new_surface
+
+    def load(self, filename, crop=None, scale_to=None):
+        self.surface = image = pygame.image.load(filename).convert_alpha()
+
+        if crop is not None:
+            # Crop the imported image by ... crop[left, right, top, bottom]
+            crop_rect = image.get_rect()
+            crop_rect.width = crop_rect.width - crop[0] - crop[1]
+            crop_rect.left = crop[0]
+            crop_rect.height = crop_rect.height - crop[2] - crop[3]
+            crop_rect.top = crop[2]
+            self.surface = pygame.Surface(crop_rect.size, pygame.SRCALPHA)
+            self.surface.blit(image, (0,0), crop_rect)
+
+        if scale_to is not None:
+            self.surface = pygame.transform.smoothscale(self.surface, scale_to)
+
+        return self.surface
+
+    def set_spritesheet(self, filename, cols, rows):
+        self._spritesheet = pygame.image.load(filename).convert_alpha()
+        self._ss_cols = cols
+        self._ss_rows = rows
+        ss_width = self._spritesheet.get_rect().width
+        ss_height = self._spritesheet.get_rect().height
+        self._ss_cell_width = ss_width // cols
+        self._ss_cell_height = ss_height // rows
+
+    def spritesheet_image(self, sprite_number, scale_to=None):
+        x = self._ss_cell_width * (sprite_number % self._ss_cols)
+        y = self._ss_cell_height * (sprite_number // self._ss_cols)
+        rect = cdkkRect(x, y, self._ss_cell_width, self._ss_cell_height)
+        self.surface = self._spritesheet.subsurface(rect)
+
+        if scale_to is not None:
+            self.surface = pygame.transform.smoothscale(self.surface, scale_to)
+
+        return self.surface
+
+### --------------------------------------------------
+
+class StringLOL:
+    # Multi-line string to list of lists of characters, with mirroring and mapping
+    def __init__(self, ml_str, mirror_map=None, string_map=None):
+        self._ml_str = ml_str
+        self._lines = self._ml_str.splitlines()
+        while "" in self._lines: self._lines.remove("")
+        self._mirror_map = mirror_map
+        self._string_map = string_map
+        self._lol = None
+        self._mapped_lol = None
+
+    def transform(self, mirror_H, mirror_last_H, mirror_V, mirror_last_V):
+        self._lol = []
+        for l in self._lines:
+            strList = list(l)
+            if mirror_H:
+                strList.extend(self.mirrorList(strList, mirror_last_H))
+            self._lol.append(strList)
+        if mirror_V:
+            l = len(self._lol)
+            if not mirror_last_V:
+                l = l - 1
+            for i in range(l-1, -1, -1):
+                mapped_list = self.mapCharList(self._lol[i], 0)
+                self._lol.append(mapped_list)
+        return (self._lol)
+
+    def mirrorList(self, strList, mirror_last_H):
+        strList2 = strList.copy()
+        if not mirror_last_H:
+            strList2.pop()
+        strList2.reverse()
+        return self.mapCharList(strList2, 1)
+
+    def mapCharList(self, the_list, map_index):
+        mapped_list = []
+        for ch in the_list:
+            if ch in self._mirror_map:
+                map_ch = self._mirror_map[ch][map_index]
+            else:
+                map_ch = ch
+            mapped_list.append(map_ch)
+        return mapped_list
+
+    def map(self):
+        self._mapped_lol = []
+        for l in self._lol:
+            map_l = []
+            for ch in l:
+                if ch in self._string_map:
+                    map_ch = self._string_map[ch]
+                else:
+                    map_ch = ""
+                map_l.append(map_ch)
+            self._mapped_lol.append(map_l)
+        return self._mapped_lol
+
+    def map_as_list(self):
+        return ([y for x in self.map() for y in x])
+
+    def printLOL(self):
+        for l in self._lol:
+            print (''.join(l))
