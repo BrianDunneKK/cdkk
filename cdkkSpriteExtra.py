@@ -239,7 +239,7 @@ class Sprite_Grid(Sprite):
         bar_x = col
         bar_y = row
 
-        if direction == "Right":
+        if direction == "R":
             bar_x = col + 1
             bar_y = 0
             while not found:
@@ -250,7 +250,7 @@ class Sprite_Grid(Sprite):
                         found = self._barriers[i]
                 if not found:
                     bar_x = bar_x + 1
-        elif direction == "Left":
+        elif direction == "L":
             bar_x = col - 1
             bar_y = 0
             while not found:
@@ -261,7 +261,7 @@ class Sprite_Grid(Sprite):
                         found = self._barriers[i]
                 if not found:
                     bar_x = bar_x - 1
-        elif direction == "Down":
+        elif direction == "D":
             bar_y = row + 1
             bar_x = 0
             while not found:
@@ -272,7 +272,7 @@ class Sprite_Grid(Sprite):
                         found = self._barriers[i]
                 if not found:
                     bar_y = bar_y + 1
-        elif direction == "Up":
+        elif direction == "U":
             bar_y = row - 1
             bar_x = 0
             while not found:

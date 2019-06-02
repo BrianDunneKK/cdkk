@@ -129,6 +129,23 @@ class Sprite(pygame.sprite.Sprite):
         if create_mask:
             self.create_mask()
 
+    def load_image_from_spritesheet(self, spritesheet_filename, cols, rows, sprite_number, scale_to=None, create_mask=True):
+        img = cdkkImage()
+        img.set_spritesheet(spritesheet_filename, cols, rows)
+
+        if scale_to == "style":
+            w = self.get_style("width")
+            h = self.get_style("height")
+            if w is None or h is None:
+                scale_to = None
+            else:
+                scale_to = (w, h)
+
+        self.image = img.spritesheet_image(sprite_number, scale_to)
+        self._image_size_to_rect()
+        if create_mask:
+            self.create_mask()
+
     def create_surface(self, width=None, height=None, per_pixel_alpha=True):
         # logger.debug("create_surface()")
         if width is None:
@@ -231,7 +248,7 @@ class Sprite_Animation(Sprite):
         super().draw(draw_flag, clear_draw_reqd=False)
         if self._draw_reqd or draw_flag > Sprite.DRAW_AS_REQD:
             anim_name = self._anim_name
-            if (anim_name != ""):
+            if (anim_name is not None and anim_name != ""):
                 if self._anim_config.next_loop():
                     self.image = self._animations[anim_name][self._anim_config.current_image]
         if clear_draw_reqd:

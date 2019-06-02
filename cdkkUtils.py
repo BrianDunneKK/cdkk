@@ -651,8 +651,8 @@ class MovingRect(cdkkRect, Physics):
 ### --------------------------------------------------
 
 class Timer():
-    def __init__(self, timer_value=0, timer_event=None, auto_start=True):
-        self._timer_value = timer_value * 1000.0
+    def __init__(self, timer_secs=0, timer_event=None, auto_start=True):
+        self._timer_value = timer_secs * 1000.0
         self._start_time = pygame.time.get_ticks()
         self._stop_time = pygame.time.get_ticks()
         self._timer_event = timer_event
@@ -691,6 +691,12 @@ class Timer():
         time_left = self._timer_value - (time_now - self._start_time)
         time_left = max(time_left, 0)
         return time_left/1000.0
+
+    def time_up(self, restart_if_expired=True):
+        expired = (self.time_left == 0)
+        if expired:
+            self.start()
+        return expired
 
     def extend_timer(self, increase_secs):
         self._timer_value = self._timer_value + increase_secs * 1000.0
@@ -1059,16 +1065,18 @@ class cdkkImage:
 
 class StringLOL:
     # Multi-line string to list of lists of characters, with mirroring and mapping
-    def __init__(self, ml_str, mirror_map=None, string_map=None):
+    def __init__(self, ml_str, mirror_map=None):
         self._ml_str = ml_str
         self._lines = self._ml_str.splitlines()
         while "" in self._lines: self._lines.remove("")
         self._mirror_map = mirror_map
-        self._string_map = string_map
         self._lol = None
         self._mapped_lol = None
 
-    def transform(self, mirror_H, mirror_last_H, mirror_V, mirror_last_V):
+    def update_lol(self, x, y, new_ch):
+        self._lol[y][x] = new_ch
+
+    def transform(self, mirror_H, mirror_last_H, mirror_V, mirror_last_V, default_map=None):
         self._lol = []
         for l in self._lines:
             strList = list(l)
@@ -1080,7 +1088,7 @@ class StringLOL:
             if not mirror_last_V:
                 l = l - 1
             for i in range(l-1, -1, -1):
-                mapped_list = self.mapCharList(self._lol[i], 0)
+                mapped_list = self.mapCharList(self._lol[i], 0, default_map)
                 self._lol.append(mapped_list)
         return (self._lol)
 
@@ -1091,31 +1099,41 @@ class StringLOL:
         strList2.reverse()
         return self.mapCharList(strList2, 1)
 
-    def mapCharList(self, the_list, map_index):
+    def mapCharList(self, the_list, map_index, default_map=None):
         mapped_list = []
         for ch in the_list:
-            if ch in self._mirror_map:
-                map_ch = self._mirror_map[ch][map_index]
-            else:
-                map_ch = ch
+            use_default = (self._mirror_map is None)
+            if not use_default:
+                if ch in self._mirror_map:
+                    map_ch = self._mirror_map[ch][map_index]
+                else:
+                    use_default = True
+            if use_default:
+                if default_map is None:
+                    map_ch = ch
+                else:
+                    map_ch = default_map
             mapped_list.append(map_ch)
         return mapped_list
 
-    def map(self):
+    def map(self, string_map, default_map=None):
         self._mapped_lol = []
         for l in self._lol:
             map_l = []
             for ch in l:
-                if ch in self._string_map:
-                    map_ch = self._string_map[ch]
+                if ch in string_map:
+                    map_ch = string_map[ch]
                 else:
-                    map_ch = ""
+                    if default_map is None:
+                        map_ch = ""
+                    else:
+                        map_ch = default_map
                 map_l.append(map_ch)
             self._mapped_lol.append(map_l)
         return self._mapped_lol
 
-    def map_as_list(self):
-        return ([y for x in self.map() for y in x])
+    def map_as_list(self, string_map, default_map=None):
+        return ([y for x in self.map(string_map, default_map) for y in x])
 
     def printLOL(self):
         for l in self._lol:
