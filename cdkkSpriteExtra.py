@@ -233,61 +233,80 @@ class Sprite_Grid(Sprite):
             return [col, row, px, py]
         else:
             return [-1, -1, 0, 0]
-    
-    def find_barrier(self, col, row, direction):
-        found = False
-        bar_x = col
-        bar_y = row
 
-        if direction == "R":
-            bar_x = col + 1
-            bar_y = 0
-            while not found:
-                found = (bar_x >= self._cols)
-                if not found:
-                    i = row * self._cols + bar_x
-                    if i>=0 and i<len(self._barriers):
-                        found = self._barriers[i]
-                if not found:
-                    bar_x = bar_x + 1
-        elif direction == "L":
-            bar_x = col - 1
-            bar_y = 0
-            while not found:
-                found = (bar_x < 0)
-                if not found:
-                    i = row * self._cols + bar_x
-                    if i>=0 and i<len(self._barriers):
-                        found = self._barriers[i]
-                if not found:
-                    bar_x = bar_x - 1
-        elif direction == "D":
-            bar_y = row + 1
-            bar_x = 0
-            while not found:
-                found = (bar_y > self._rows)
-                if not found:
-                    i = bar_y * self._cols + col
-                    if i>=0 and i<len(self._barriers):
-                        found = self._barriers[i]
-                if not found:
-                    bar_y = bar_y + 1
-        elif direction == "U":
-            bar_y = row - 1
-            bar_x = 0
-            while not found:
-                found = (bar_y < 0)
-                if not found:
-                    i = bar_y * self._cols + col
-                    if i>=0 and i<len(self._barriers):
-                        found = self._barriers[i]
-                if not found:
-                    bar_y = bar_y - 1
+    def find_cell_centre(self, x, y, allow_outside=False):
+        cellp = self.find_cellp(x, y, allow_outside)
+        px = cellp[2]
+        py = cellp[3]
 
-        if found:
-            return (bar_x+bar_y)                    
+        if (px>35 and px<65 and py>35 and py<65):
+            return (cellp[0], cellp[1])
         else:
-            return (-1)
+            return (-1, -1)
+
+    def find_barrier_R(self, col, row):
+        found = False
+        bar_x = col + 1
+        while not found:
+            found = (bar_x >= self._cols)
+            if not found:
+                i = row * self._cols + bar_x
+                if i>=0 and i<len(self._barriers):
+                    found = self._barriers[i]
+            if not found:
+                bar_x = bar_x + 1
+
+        return (bar_x if found else -1)
+
+    def find_barrier_L(self, col, row):
+        found = False
+        bar_x = col - 1
+        while not found:
+            found = (bar_x < 0)
+            if not found:
+                i = row * self._cols + bar_x
+                if i>=0 and i<len(self._barriers):
+                    found = self._barriers[i]
+            if not found:
+                bar_x = bar_x - 1
+
+        return (bar_x if found else -1)
+
+    def find_barrier_D(self, col, row):
+        found = False
+        bar_y = row + 1
+        while not found:
+            found = (bar_y > self._rows)
+            if not found:
+                i = bar_y * self._cols + col
+                if i>=0 and i<len(self._barriers):
+                    found = self._barriers[i]
+            if not found:
+                bar_y = bar_y + 1
+
+        return (bar_y if found else -1)
+
+    def find_barrier_U(self, col, row):
+        found = False
+        bar_y = row - 1
+        while not found:
+            found = (bar_y < 0)
+            if not found:
+                i = bar_y * self._cols + col
+                if i>=0 and i<len(self._barriers):
+                    found = self._barriers[i]
+            if not found:
+                bar_y = bar_y - 1
+
+        return (bar_y if found else -1)
+
+    def find_barriers(self, col, row, direction):
+        return {
+            'R': self.find_barrier_R(col, row),
+            'L': self.find_barrier_L(col, row),
+            'D': self.find_barrier_D(col, row),
+            'U': self.find_barrier_U(col, row)
+        }
 
 
 ### --------------------------------------------------

@@ -239,7 +239,7 @@ class Sprite_Animation(Sprite):
             self.set_animation(set_name)
 
     def set_animation(self, new_animation, mode=ANIMATE_LOOP, loops_per_image=None):
-        if self._anim_name != new_animation:
+        if self._anim_name != new_animation and new_animation in self._animations:
             self._anim_name = new_animation
             self._anim_config.setup(len(self._animations[new_animation]), mode, loops_per_image)
             self._draw_reqd = True
