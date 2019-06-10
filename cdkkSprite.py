@@ -116,7 +116,10 @@ class Sprite(pygame.sprite.Sprite):
             ret_image = pygame.transform.smoothscale(ret_image, scale_to)
         return ret_image
 
-    def load_image(self, filename, crop=None, scale_to=None, create_mask=True):
+    def load_image(self):
+        pass
+        
+    def load_image_from_file(self, filename, crop=None, scale_to=None, create_mask=True):
         if scale_to == "style":
             w = self.get_style("width")
             h = self.get_style("height")

@@ -37,11 +37,11 @@ class Sprite_GameOver(Sprite_TextBox):
 
 ### --------------------------------------------------
 
-class Sprite_BoardGame_Board(Sprite_Shape):
-    default_style = {"fillcolour":"black", "outlinecolour":None, "altcolour":"white", "highlightcolour":"violetred1", "outlinewidth":3}
+class Sprite_Grid(Sprite):
+    default_style = Sprite_Shape.invisible_style
 
-    def __init__(self, name="Board", style=None):
-        super().__init__(name, style=merge_dicts(Sprite_BoardGame_Board.default_style, style))
+    def __init__(self, name="Grid", style=None):
+        super().__init__(name, style=merge_dicts(Sprite_Grid.default_style, style))
         self._rows = self._cols = 0
         self._cell0 = pygame.Rect(0,0,0,0)
         self._xsize = self._ysize = 0
@@ -57,7 +57,45 @@ class Sprite_BoardGame_Board(Sprite_Shape):
     def cell_rect(self, col, row):
         x = self.rect.left + col * self._cell0.width
         y = self.rect.top + row * self._cell0.height
-        return pygame.Rect(x, y, self._cell0.width, self._cell0.height)
+        return cdkkRect(x, y, self._cell0.width, self._cell0.height)
+
+    def find_cell(self, x_y, allow_outside=False):
+        x, y = x_y
+        col = (x - self.rect.left) // self._cell0.width
+        row = (y - self.rect.top) // self._cell0.height
+        if self.rect.collidepoint(x, y) or allow_outside:
+            return (col, row)
+        else:
+            return (-1, -1)
+
+    def find_cellp(self, x_y, allow_outside=False):
+        x, y = x_y
+        col, row = self.find_cell(x_y, True)
+        cell = self.cell_rect(col, row)
+        px = 100.0 * (x - cell.left)/cell.width
+        py = 100.0 * (y - cell.top)/cell.height
+        if self.rect.collidepoint(x, y) or allow_outside:
+            return [col, row, px, py]
+        else:
+            return [-1, -1, 0, 0]
+
+    def find_cell_centre(self, x_y, allow_outside=False):
+        cellp = self.find_cellp(x_y, allow_outside)
+        px = cellp[2]
+        py = cellp[3]
+
+        if (px>35 and px<65 and py>35 and py<65):
+            return (cellp[0], cellp[1])
+        else:
+            return (-1, -1)
+
+### --------------------------------------------------
+
+class Sprite_BoardGame_Board(Sprite_Grid):
+    default_style = {"fillcolour":"black", "outlinecolour":None, "altcolour":"white", "highlightcolour":"violetred1", "outlinewidth":3}
+
+    def __init__(self, name="Board", style=None):
+        super().__init__(name, style=merge_dicts(Sprite_BoardGame_Board.default_style, style))
 
     def setup_grid(self, xsize, cols, event_on_click=None, rows=None, ysize=None):
         self.event_on_click = event_on_click
@@ -69,7 +107,7 @@ class Sprite_BoardGame_Board(Sprite_Shape):
             rows = cols
         self.rect.width = xsize * cols
         self.rect.height = ysize * rows
-        self.create_canvas()
+        self.image = self.create_surface()
 
         img = None
         img_file = self.get_style("fillimage")
@@ -96,14 +134,6 @@ class Sprite_BoardGame_Board(Sprite_Shape):
                     pygame.draw.rect(self.image, line_col, r, line_w)
         self._draw_reqd = False
         self._cell0 = cdkkRect(0, 0, xsize, ysize)
-
-    def find_cell(self, x, y, allow_outside=False):
-        col = (x - self.rect.left) // self._cell0.width
-        row = (y - self.rect.top) // self._cell0.height
-        if self.rect.collidepoint(x, y) or allow_outside:
-            return (col, row)
-        else:
-            return (-1, -1)
 
     def highlight_cells(self, cell_list, highlight_on = True):
         for c in cell_list:
@@ -174,19 +204,11 @@ class Sprite_BoardGame_Piece(Sprite_Shape):
 
 ### --------------------------------------------------
 
-class Sprite_Grid(Sprite):
+class Sprite_ImageGrid(Sprite_Grid):
     default_style = {"fillcolour":"black"}
 
     def __init__(self, name="Grid", style=None):
-        super().__init__(name, style=merge_dicts(Sprite_Shape.invisible_style, Sprite_Grid.default_style, style))
-        self._rows = self._cols = 0
-        self._cell0 = pygame.Rect(0,0,0,0)
-        self._xsize = self._ysize = 0
-
-    def cell_rect(self, col, row):
-        x = self.rect.left + col * self._cell0.width
-        y = self.rect.top + row * self._cell0.height
-        return cdkkRect(x, y, self._cell0.width, self._cell0.height)
+        super().__init__(name, style=merge_dicts(Sprite_Shape.invisible_style, Sprite_ImageGrid.default_style, style))
 
     def setup_grid(self, spritesheet, sprites, barriers, xsize, cols, ysize=None, rows=None, event_on_click=None):
         if ysize == None:
@@ -215,34 +237,6 @@ class Sprite_Grid(Sprite):
                 r = cdkkRect(j * xsize, i * ysize, xsize, ysize)
                 img.spritesheet_image(sprites[i*cols+j], scale_to=(xsize, ysize))
                 self.image.blit(img.surface, r)
-
-    def find_cell(self, x, y, allow_outside=False):
-        col = (x - self.rect.left) // self._cell0.width
-        row = (y - self.rect.top) // self._cell0.height
-        if self.rect.collidepoint(x, y) or allow_outside:
-            return (col, row)
-        else:
-            return (-1, -1)
-
-    def find_cellp(self, x, y, allow_outside=False):
-        col, row = self.find_cell(x, y, True)
-        cell = self.cell_rect(col, row)
-        px = 100.0 * (x - cell.left)/cell.width
-        py = 100.0 * (y - cell.top)/cell.height
-        if self.rect.collidepoint(x, y) or allow_outside:
-            return [col, row, px, py]
-        else:
-            return [-1, -1, 0, 0]
-
-    def find_cell_centre(self, x, y, allow_outside=False):
-        cellp = self.find_cellp(x, y, allow_outside)
-        px = cellp[2]
-        py = cellp[3]
-
-        if (px>35 and px<65 and py>35 and py<65):
-            return (cellp[0], cellp[1])
-        else:
-            return (-1, -1)
 
     def find_barrier_R(self, col, row):
         found = False
@@ -300,7 +294,9 @@ class Sprite_Grid(Sprite):
 
         return (bar_y if found else -1)
 
-    def find_barriers(self, col, row, direction):
+    def find_barriers(self, cell_pos):
+        col =  cell_pos[0]
+        row =  cell_pos[1]
         return {
             'R': self.find_barrier_R(col, row),
             'L': self.find_barrier_L(col, row),
@@ -308,5 +304,103 @@ class Sprite_Grid(Sprite):
             'U': self.find_barrier_U(col, row)
         }
 
+### --------------------------------------------------
+
+class Sprite_ImageGridActor(Sprite_Animation):
+    def __init__(self, name, start_cell, cell0, speed=1, move_timer=None):
+        super().__init__(name)
+        self._cell_pos = [None, None, None, None]  # cell_x, cell_y, cell_px, cell_py
+        self._barriers = None
+        self.direction = "R"
+        self._speed = speed
+        self._cell0 = cell0
+        self.load_image()
+        self.move_to(start_cell)
+        self._timer = Timer(move_timer) if move_timer is not None else None
+
+    @property
+    def centre(self):
+        return self.rect.center
+
+    @property
+    def direction(self):
+        return self._direction
+
+    @direction.setter
+    def direction(self, new_direction):
+        if new_direction in ["U", "D", "L", "R"]:
+            self._direction = new_direction
+            self.set_animation(self.name + new_direction, ANIMATE_SHUTTLE, 2)
+            self._draw_reqd = True
+
+    def set_pos(self, new_cell_pos, new_barriers=None):
+        self._cell_pos = new_cell_pos
+        self._barriers = new_barriers
+
+    def _convert_dir(self, dir):
+        # Convert dir string to dx, dy
+        if   dir == "R": dx, dy = 1, 0
+        elif dir == "L": dx, dy = -1, 0
+        elif dir == "D": dx, dy = 0, 1
+        elif dir == "U": dx, dy = 0, -1
+        else: dx, dy = 0, 0
+        return (dx, dy)
+
+    def _can_move(self):
+        x = self._cell_pos[0]
+        y = self._cell_pos[1]
+        px = self._cell_pos[2]
+        py = self._cell_pos[3]
+
+        dir_ok = { "R":True, "L":True, "D":True, "U":True }
+
+        # Check if barrier is too close
+        if px >= 50: dir_ok["R"] = ((x+1) < self._barriers["R"]) and (py>35 and py<65)
+        if px <= 50: dir_ok["L"] = ((x-1) > self._barriers["L"]) and (py>35 and py<65)
+        if py >= 50: dir_ok["D"] = ((y+1) < self._barriers["D"]) and (px>35 and px<65)
+        if py <= 50: dir_ok["U"] = ((y-1) > self._barriers["U"]) and (px>35 and px<65)
+
+        return dir_ok
+
+    def move(self, dir=None):
+        if dir is None:
+            dir = self.choose_move(self._can_move())
+
+        if dir not in ["R", "L", "D", "U"]:
+            return
+
+        dir_ok = self._can_move()
+
+        dx = dy = 0
+        if dir == "R" and dir_ok["R"]: dx = self._speed
+        if dir == "L" and dir_ok["L"]: dx = -self._speed
+        if dir == "D" and dir_ok["D"]: dy = self._speed
+        if dir == "U" and dir_ok["U"]: dy = -self._speed
+
+        if dir_ok[dir]:
+            if dx != 0: dy = ((50 - self._cell_pos[3]) / 100.0 ) * self._cell0.height
+            if dy != 0: dx = ((50 - self._cell_pos[2]) / 100.0 ) * self._cell0.width
+            self.direction = dir
+            self.move_by(dx, dy)
+
+        return dir_ok[dir]
+
+    def move_by(self, dx, dy):
+        do_move = True
+        if self._timer is not None:
+            do_move = self._timer.time_up()
+
+        if do_move: self.rect.move_physics(dx, dy)
+
+    def move_to(self, col_row, new_dir=None):
+        col, row = col_row
+        self.rect.centerx = self._cell0.left + (col + 0.5) * self._cell0.width
+        self.rect.centery = self._cell0.top + (row + 0.5) * self._cell0.height
+        self._cell_pos = [col, row, 50, 50]
+        if new_dir is not None:
+            self.direction = new_dir
+
+    def choose_move(self, can_move):
+        return "R"
 
 ### --------------------------------------------------

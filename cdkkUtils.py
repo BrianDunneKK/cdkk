@@ -984,7 +984,7 @@ class Animation_Counter:
                 self.index = self.total - 1
             elif self.mode == ANIMATE_SHUTTLE:
                 self.step = 1
-                self.index = 1
+                self.index = 1 if self.total>1 else 0
             elif self.mode == ANIMATE_ONCE:
                 self.index = 0
                 self.step = 0
@@ -994,7 +994,7 @@ class Animation_Counter:
                     self.step = 0
                 else:
                     self.step = 1
-                    self.index = 1
+                    self.index = 1 if self.total>1 else 0
 
     def prev_image(self):
         if self.mode == ANIMATE_MANUAL:
