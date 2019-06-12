@@ -54,9 +54,34 @@ class Sprite_Grid(Sprite):
     def cols(self):
         return self._cols
 
-    def cell_rect(self, col, row):
-        x = self.rect.left + col * self._cell0.width
-        y = self.rect.top + row * self._cell0.height
+    @property
+    def cell_size(self):
+        return (self._xsize, self._ysize)
+
+    def setup_grid(self, cols_rows, xsize_ysize, event_on_click=None):
+        xsize, ysize = xsize_ysize
+        if ysize is None: ysize = xsize
+        self._xsize = xsize
+        self._ysize = ysize
+
+        cols, rows = cols_rows
+        if rows is None: rows = cols
+        self._cols = cols
+        self._rows = rows
+
+        self.rect.width = xsize * cols
+        self.rect.height = ysize * rows
+        self._cell0 = cdkkRect(0, 0, xsize, ysize)
+
+        self.image = self.create_surface()
+        self.event_on_click = event_on_click
+    
+    def cell_rect(self, col, row, relative=False):
+        x = col * self._cell0.width
+        y = row * self._cell0.height
+        if not relative:
+            x = x + self.rect.left
+            y = y + self.rect.top
         return cdkkRect(x, y, self._cell0.width, self._cell0.height)
 
     def find_cell(self, x_y, allow_outside=False):
@@ -97,27 +122,18 @@ class Sprite_BoardGame_Board(Sprite_Grid):
     def __init__(self, name="Board", style=None):
         super().__init__(name, style=merge_dicts(Sprite_BoardGame_Board.default_style, style))
 
-    def setup_grid(self, xsize, cols, event_on_click=None, rows=None, ysize=None):
-        self.event_on_click = event_on_click
-        if ysize == None:
-            ysize = xsize
-        self._xsize = xsize
-        self._ysize = ysize
-        if rows == None:
-            rows = cols
-        self.rect.width = xsize * cols
-        self.rect.height = ysize * rows
-        self.image = self.create_surface()
+    def setup_board_grid(self, xsize, cols, event_on_click=None, rows=None, ysize=None):
+        super().setup_grid((cols, rows), (xsize, ysize), event_on_click)
 
         img = None
         img_file = self.get_style("fillimage")
         if img_file is not None:
             img = cdkkImage()
-            img.load(img_file, scale_to=(xsize, ysize))
+            img.load(img_file, scale_to=self.cell_size)
 
-        for i in range(0,cols):
-            for j in range (0,rows):
-                r = cdkkRect(i * xsize, j * ysize, xsize, ysize)
+        for i in range(0,self.cols):
+            for j in range (0,self.rows):
+                r = self.cell_rect(i,j, True)
                 if (i+j)%2 == 0:
                     col = self.get_style_colour("fillcolour")
                 else:
@@ -132,12 +148,10 @@ class Sprite_BoardGame_Board(Sprite_Grid):
                 line_w = self.get_style("outlinewidth")
                 if line_col is not None:
                     pygame.draw.rect(self.image, line_col, r, line_w)
-        self._draw_reqd = False
-        self._cell0 = cdkkRect(0, 0, xsize, ysize)
 
     def highlight_cells(self, cell_list, highlight_on = True):
         for c in cell_list:
-            r = cdkkRect(c[0] * self._xsize, c[1] * self._ysize, self._xsize, self._ysize)
+            r = self.cell_rect(c[0], c[1], True)
             if highlight_on:
                 col = self.get_style_colour("highlightcolour")
             else:
@@ -210,24 +224,8 @@ class Sprite_ImageGrid(Sprite_Grid):
     def __init__(self, name="Grid", style=None):
         super().__init__(name, style=merge_dicts(Sprite_Shape.invisible_style, Sprite_ImageGrid.default_style, style))
 
-    def setup_grid(self, spritesheet, sprites, barriers, xsize, cols, ysize=None, rows=None, event_on_click=None):
-        if ysize == None:
-            ysize = xsize
-        self._xsize = xsize
-        self._ysize = ysize
-
-        if rows == None:
-            rows = cols
-        self._cols = cols
-        self._rows = rows
-        
-        self.rect.width = xsize * cols
-        self.rect.height = ysize * rows
-        self._cell0 = cdkkRect(0, 0, xsize, ysize)
-
-        self.image = self.create_surface()
-        self.event_on_click = event_on_click
-        self._draw_reqd = True
+    def setup_image_grid(self, spritesheet, sprites, barriers, xsize, cols, ysize=None, rows=None, event_on_click=None):
+        super().setup_grid((cols, rows), (xsize, ysize), event_on_click)
 
         self._barriers = barriers
         img = cdkkImage()
