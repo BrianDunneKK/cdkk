@@ -4,11 +4,13 @@ import pygame
 import math
 from collections import deque
 import random
+import os
 
-### --------------------------------------------------
+# --------------------------------------------------
 
 import logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
+logging.basicConfig(level=logging.WARNING,
+                    format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
 logger = logging.getLogger()
 # logger.critical('This is a critical message.')
 # logger.error('This is an error message.')
@@ -18,7 +20,8 @@ logger = logging.getLogger()
 # logger.setLevel(logging.DEBUG)
 # logger.setLevel(logging.NOTSET)
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 def merge_dicts(*dict_args):
     """
@@ -30,8 +33,9 @@ def merge_dicts(*dict_args):
         if dictionary is not None:
             result.update(dictionary)
     return result
-    
-### --------------------------------------------------
+
+# --------------------------------------------------
+
 
 # Sprite bounces on its ...
 BOUNCE_LEFT = 1
@@ -44,7 +48,8 @@ BOUNCE_HORIZONTAL = BOUNCE_TOP + BOUNCE_BOTTOM
 # Limit Types
 LIMIT_KEEP_INSIDE = 1              # Keep inside the limits
 LIMIT_KEEP_OUTSIDE = 2             # Keep outside the limits
-LIMIT_OVERLAP = 4                  # Overlap; compare top-left corners (destination)
+# Overlap; compare top-left corners (destination)
+LIMIT_OVERLAP = 4
 LIMIT_COLLISION = 8                # Collision with another moving object
 LIMIT_MOVE_TO = 16                 # Move towards the limit (e.g. magnet)
 
@@ -63,7 +68,8 @@ AT_LIMIT_MOVE_TO_XY = 128+256      # At X/Y limit, move to X/Y
 AT_LIMIT_X_DO_NOTHING = 512        # At X limit, do nothing
 AT_LIMIT_Y_DO_NOTHING = 1024       # At Y limit, do nothing
 AT_LIMIT_XY_DO_NOTHING = 512+1024  # At Y limit, do nothing
-AT_LIMIT_STOP = 2048               # At X/Y limit, hold X&Y positions and clear X & Y velocities
+# At X/Y limit, hold X&Y positions and clear X & Y velocities
+AT_LIMIT_STOP = 2048
 
 # At Limit
 AT_LIMIT_LEFT = 1
@@ -74,16 +80,17 @@ AT_LIMIT_INSIDE_X = 16
 AT_LIMIT_INSIDE_Y = 32
 
 
-### --------------------------------------------------
+# --------------------------------------------------
 
 def rect_to_debug_str(r):
     return "Left-Top=({0},{1}), Width-Height=({2},{3})".format(r.left, r.top, r.width, r.height)
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class Physics_Motion:
     def __init__(self):
-        self._position = [0,0]
+        self._position = [0, 0]
         self._velocity = [0.0, 0.0]
         self._acceleration = [0.0, 0.0]
         self.low_limit = 0.1
@@ -103,6 +110,7 @@ class Physics_Motion:
     @property
     def velocity_y(self):
         return self._velocity[1]
+
     @property
     def acceleration_x(self):
         return self._acceleration[0]
@@ -113,7 +121,7 @@ class Physics_Motion:
 
     @property
     def stopped(self):
-        return (self.velocity_x==0 and self.velocity_y==0 and self.acceleration_x==0 and self.acceleration_y==0)
+        return (self.velocity_x == 0 and self.velocity_y == 0 and self.acceleration_x == 0 and self.acceleration_y == 0)
 
     @position_x.setter
     def position_x(self, new_position_x):
@@ -147,13 +155,15 @@ class Physics_Motion:
             new_acceleration = 0
         self._acceleration[1] = new_acceleration
 
+
 class Physics_Limit:
     def __init__(self, rect, limit_type, action, event=None):
         self.rect = rect.copy()
         self.limit_type = limit_type  # One of Limit Types
-        self.action = action # One of Actions at Limits
+        self.action = action  # One of Actions at Limits
         self.event = event
         self.motion = None
+
 
 class Physics:
     gravity = 9.81
@@ -169,7 +179,8 @@ class Physics:
         self._multiplier = 50
         self._bounce_timer = Timer(0)
         self.bounce_cor = 0.8  # Coefficient of Restitution
-        self.bounce_time_limit = 0.5  # Minimum time between dynamic bounces (secs)
+        # Minimum time between dynamic bounces (secs)
+        self.bounce_time_limit = 0.5
         self.negate_acc = 0.9
         self._limits = []
 
@@ -281,14 +292,17 @@ class Physics:
     def multiplier(self, multiplier):
         self._multiplier = multiplier
 
-    def set_velocity(self, curr_vel_x, curr_vel_y):
-        self._curr_motion.velocity_x = curr_vel_x
-        self._curr_motion.velocity_y = curr_vel_y
-        self._init_pvt_x()
-        self._init_pvt_y()
+    def set_velocity(self, vel_x=None, vel_y=None):
+        if vel_x is not None:
+            self._curr_motion.velocity_x = vel_x
+            self._init_pvt_x()
+        if vel_y is not None:
+            self._curr_motion.velocity_y = vel_y
+            self._init_pvt_y()
 
     def set_speed_angle(self, speed, angle):
-        self.set_velocity(speed * math.cos(math.radians(angle)), speed * math.sin(math.radians(angle)))
+        self.set_velocity(speed * math.cos(math.radians(angle)),
+                          speed * math.sin(math.radians(angle)))
 
     def set_acceleration(self, xacceleration, yacceleration):
         self._curr_motion.acceleration_x = xacceleration
@@ -368,17 +382,22 @@ class Physics:
 
     def _calculate_curr_motion(self, dx, dy, use_physics):
         if use_physics:
-            self.set_initial_position(self.init_pos_x + dx, self.init_pos_y + dy)
+            self.set_initial_position(
+                self.init_pos_x + dx, self.init_pos_y + dy)
             if (dx > 0 or dy > 0):
                 self.apply_limits(self, use_curr_motion=False)
 
             tx = self.x_timer_elapsed
-            self._curr_motion.position_x = self.init_pos_x + int((self.init_vel_x * tx + 0.5 * self.curr_acc_x * tx * tx) * self._multiplier)
+            self._curr_motion.position_x = self.init_pos_x + \
+                int((self.init_vel_x * tx + 0.5 *
+                     self.curr_acc_x * tx * tx) * self._multiplier)
             self._curr_motion.velocity_x = self.init_vel_x + self.curr_acc_x * tx
             self._curr_motion.acceleration_x = self.curr_acc_x
 
             ty = self.y_timer_elapsed
-            self._curr_motion.position_y = self.init_pos_y + int((self.init_vel_y * ty + 0.5 * self.curr_acc_y * ty * ty) * self._multiplier)
+            self._curr_motion.position_y = self.init_pos_y + \
+                int((self.init_vel_y * ty + 0.5 *
+                     self.curr_acc_y * ty * ty) * self._multiplier)
             self._curr_motion.velocity_y = self.init_vel_y + self.curr_acc_y * ty
             self._curr_motion.acceleration_y = self.curr_acc_y
         else:
@@ -387,7 +406,6 @@ class Physics:
                 self.apply_limits(self, use_curr_motion=False)
             self.curr_pos_x = self.init_pos_x
             self.curr_pos_y = self.init_pos_y
-
 
     def _test_limit(self, limit, use_curr_motion=True):
         if use_curr_motion:
@@ -398,18 +416,24 @@ class Physics:
         at_limit_x = at_limit_y = 0
 
         # Calculate distance to limit
-        left_to_limit_left   = motion.position_x - limit.rect.left
-        right_to_limit_left  = (motion.position_x + self.rect_width) - limit.rect.left
-        left_to_limit_right  = motion.position_x - limit.rect.right
-        right_to_limit_right = (motion.position_x + self.rect_width) - limit.rect.right
+        left_to_limit_left = motion.position_x - limit.rect.left
+        right_to_limit_left = (motion.position_x +
+                               self.rect_width) - limit.rect.left
+        left_to_limit_right = motion.position_x - limit.rect.right
+        right_to_limit_right = (
+            motion.position_x + self.rect_width) - limit.rect.right
 
-        top_to_limit_top       = motion.position_y - limit.rect.top
-        bottom_to_limit_top    = (motion.position_y + self.rect_height) - limit.rect.top
-        top_to_limit_bottom    = motion.position_y - limit.rect.bottom
-        bottom_to_limit_bottom = (motion.position_y + self.rect_height) - limit.rect.bottom
+        top_to_limit_top = motion.position_y - limit.rect.top
+        bottom_to_limit_top = (motion.position_y +
+                               self.rect_height) - limit.rect.top
+        top_to_limit_bottom = motion.position_y - limit.rect.bottom
+        bottom_to_limit_bottom = (
+            motion.position_y + self.rect_height) - limit.rect.bottom
 
-        centerx_to_limit_centerx = motion.position_x + self.rect_width//2 - limit.rect.centerx
-        centery_to_limit_centery = motion.position_y + self.rect_height//2 - limit.rect.centery
+        centerx_to_limit_centerx = motion.position_x + \
+            self.rect_width//2 - limit.rect.centerx
+        centery_to_limit_centery = motion.position_y + \
+            self.rect_height//2 - limit.rect.centery
 
         # Determine if at limit
         if limit.limit_type == LIMIT_KEEP_INSIDE:
@@ -444,13 +468,13 @@ class Physics:
         elif limit.limit_type == LIMIT_MOVE_TO:
             if left_to_limit_right > 0:
                 at_limit_x |= AT_LIMIT_RIGHT
-            elif right_to_limit_left  < 0:
+            elif right_to_limit_left < 0:
                 at_limit_x |= AT_LIMIT_LEFT
             elif abs(centerx_to_limit_centerx) < limit.rect.width:
                 at_limit_x |= AT_LIMIT_INSIDE_X
             if top_to_limit_bottom > 0:
                 at_limit_y |= AT_LIMIT_BOTTOM
-            elif bottom_to_limit_top  < 0:
+            elif bottom_to_limit_top < 0:
                 at_limit_y |= AT_LIMIT_TOP
             elif abs(centery_to_limit_centery) < limit.rect.height:
                 at_limit_y |= AT_LIMIT_INSIDE_Y
@@ -534,41 +558,43 @@ class Physics:
 
         # AT_LIMIT_X_BOUNCE_X
         if (action & AT_LIMIT_X_BOUNCE_X) > 0 and at_limit_x > 0:
-            self._init_pvt_x(self.curr_pos_x, self.curr_vel_x * -self.bounce_cor)
+            self._init_pvt_x(
+                self.curr_pos_x, self.curr_vel_x * -self.bounce_cor)
 
         # AT_LIMIT_Y_BOUNCE_Y
         if (action & AT_LIMIT_Y_BOUNCE_Y) > 0 and at_limit_y > 0:
-            self._init_pvt_y(self.curr_pos_y, self.curr_vel_y * -self.bounce_cor)
+            self._init_pvt_y(
+                self.curr_pos_y, self.curr_vel_y * -self.bounce_cor)
 
         # AT_LIMIT_X_MOVE_TO_X
         if (action & AT_LIMIT_X_MOVE_TO_X) > 0:
-                if (at_limit_x & AT_LIMIT_INSIDE_X) > 0:
-                    if abs(self.curr_vel_x) > 0:
-                        self.curr_pos_x = limit.rect.centerx - self.rect_width//2
-                        self.stop_here_x()
-                if (at_limit_x & AT_LIMIT_LEFT) > 0:
-                    if self.curr_vel_x == 0:
-                        self.curr_vel_x = abs(limit.motion.velocity_x)
-                        self._init_pvt_x()
-                if (at_limit_x & AT_LIMIT_RIGHT) > 0:
-                    if self.curr_vel_x == 0:
-                        self.curr_vel_x = -abs(limit.motion.velocity_x)
-                        self._init_pvt_x()
+            if (at_limit_x & AT_LIMIT_INSIDE_X) > 0:
+                if abs(self.curr_vel_x) > 0:
+                    self.curr_pos_x = limit.rect.centerx - self.rect_width//2
+                    self.stop_here_x()
+            if (at_limit_x & AT_LIMIT_LEFT) > 0:
+                if self.curr_vel_x == 0:
+                    self.curr_vel_x = abs(limit.motion.velocity_x)
+                    self._init_pvt_x()
+            if (at_limit_x & AT_LIMIT_RIGHT) > 0:
+                if self.curr_vel_x == 0:
+                    self.curr_vel_x = -abs(limit.motion.velocity_x)
+                    self._init_pvt_x()
 
         # AT_LIMIT_Y_MOVE_TO_Y
         if (action & AT_LIMIT_Y_MOVE_TO_Y) > 0:
-                if (at_limit_y & AT_LIMIT_INSIDE_Y) > 0:
-                    if abs(self.curr_vel_y) > 0:
-                        self.curr_pos_y = limit.rect.centery - self.rect_height//2
-                        self.stop_here_y()
-                if (at_limit_y & AT_LIMIT_LEFT) > 0:
-                    if self.curr_vel_y == 0:
-                        self.curr_vel_y = abs(limit.motion.velocity_y)
-                        self._init_pvt_y()
-                if (at_limit_y & AT_LIMIT_RIGHT) > 0:
-                    if self.curr_vel_y == 0:
-                        self.curr_vel_y = -abs(limit.motion.velocity_y)
-                        self._init_pvt_y()
+            if (at_limit_y & AT_LIMIT_INSIDE_Y) > 0:
+                if abs(self.curr_vel_y) > 0:
+                    self.curr_pos_y = limit.rect.centery - self.rect_height//2
+                    self.stop_here_y()
+            if (at_limit_y & AT_LIMIT_LEFT) > 0:
+                if self.curr_vel_y == 0:
+                    self.curr_vel_y = abs(limit.motion.velocity_y)
+                    self._init_pvt_y()
+            if (at_limit_y & AT_LIMIT_RIGHT) > 0:
+                if self.curr_vel_y == 0:
+                    self.curr_vel_y = -abs(limit.motion.velocity_y)
+                    self._init_pvt_y()
 
         # AT_LIMIT_X_DO_NOTHING
         if (action & AT_LIMIT_X_DO_NOTHING) > 0:
@@ -583,14 +609,14 @@ class Physics:
             self.stop_here_x()
             self.stop_here_y()
 
-
-
     def _apply_limit(self, limit, use_curr_motion=True):
         at_limit_x, at_limit_y = self._test_limit(limit, use_curr_motion)
         if (at_limit_x > 0 or at_limit_y > 0):
-            self._post_event_at_limit(limit, at_limit_x, at_limit_y, use_curr_motion)
+            self._post_event_at_limit(
+                limit, at_limit_x, at_limit_y, use_curr_motion)
             action = self._eval_action(limit.action)
-            self._execute_action(limit, action, at_limit_x, at_limit_y, use_curr_motion)
+            self._execute_action(limit, action, at_limit_x,
+                                 at_limit_y, use_curr_motion)
 
     def apply_limits(self, use_physics=False, use_curr_motion=True):
         if not use_physics:
@@ -600,6 +626,7 @@ class Physics:
             self._apply_limit(limit, use_curr_motion)
 
     def dynamic_limit(self, limit):
+        ret_val = True
         if limit.limit_type == LIMIT_KEEP_INSIDE or limit.limit_type == LIMIT_KEEP_OUTSIDE or limit.limit_type == LIMIT_OVERLAP:
             # To Do: Test
             at_limit_x, at_limit_y = self._test_limit(limit)
@@ -607,10 +634,13 @@ class Physics:
                 self._post_event_at_limit(limit, at_limit_x, at_limit_y)
                 action = self._eval_action(limit.action)
                 self._execute_action(limit, action, at_limit_x, at_limit_y)
+            else:
+                ret_val = False
 
         if limit.limit_type == LIMIT_COLLISION and limit.action == AT_LIMIT_BOUNCE and self._bounce_timer.time_left == 0:
-            if limit.rect.centery != self.centery: # Avoid divde by 0
-                tangent_slope = (self.centerx - limit.rect.centerx) / (limit.rect.centery - self.centery)
+            if limit.rect.centery != self.centery:  # Avoid divde by 0
+                tangent_slope = (self.centerx - limit.rect.centerx) / \
+                    (limit.rect.centery - self.centery)
                 tangent_angle = math.degrees(math.atan(tangent_slope))
                 self.angle = 2 * tangent_angle - self.angle
                 self.go()
@@ -618,17 +648,28 @@ class Physics:
                 self._bounce_timer = Timer(self.bounce_time_limit)
                 self._post_event_at_limit(limit, 1, AT_LIMIT_TOP)
 
-### --------------------------------------------------
+        return ret_val
+
+# --------------------------------------------------
+
 
 cdkkRect = pygame.Rect
+
 
 class MovingRect(cdkkRect, Physics):
     def __init__(self):
         Physics.__init__(self)
-        self.topleft = (0,0)
-        self.size = (0,0)
-        self.limits = None
+        self.topleft = (0, 0)
+        self.size = (0, 0)
         self._use_physics = False
+
+    @property
+    def use_physics(self):
+        return self._use_physics
+
+    @use_physics.setter
+    def use_physics(self, new_use_physics):
+        self._use_physics = new_use_physics
 
     def go(self):
         self.set_initial_position(self.left, self.top)
@@ -638,17 +679,32 @@ class MovingRect(cdkkRect, Physics):
         self._start_x_timer()
         self._start_y_timer()
         self._moving = not self.stopped
-        self._use_physics = True
+        self.use_physics = True
 
     def move_physics(self, dx=0, dy=0):
         # logger.debug("BEFORE: "+self.debug_str)
-        self._calculate_curr_motion(dx, dy, self._use_physics)
-        self.apply_limits(self._use_physics)
+        self._calculate_curr_motion(dx, dy, self.use_physics)
+        self.apply_limits(self.use_physics)
         self.left = self.curr_pos_x
         self.top = self.curr_pos_y
         # logger.debug("AFTER : "+self.debug_str)
 
-### --------------------------------------------------
+    def move_to(self, pos_x=None, pos_y=None):
+        if self.use_physics:
+            self._init_pvt_x(xpos=pos_x)
+            self._init_pvt_y(ypos=pos_y)
+        else:
+            if pos_x is not None:
+                self.centerx = pos_x
+            if pos_y is not None:
+                self.centery = pos_y
+        self._calculate_curr_motion(0, 0, self.use_physics)
+        self.apply_limits(self.use_physics)
+        self.left = self.curr_pos_x
+        self.top = self.curr_pos_y
+
+# --------------------------------------------------
+
 
 class Timer():
     def __init__(self, timer_secs=0, timer_event=None, auto_start=True):
@@ -656,16 +712,19 @@ class Timer():
         self._start_time = pygame.time.get_ticks()
         self._stop_time = pygame.time.get_ticks()
         self._timer_event = timer_event
+        self._running = auto_start
         if (auto_start):
-                self.start()
+            self.start()
 
     def start(self):
         self._start_time = pygame.time.get_ticks()
+        self._running = True
         if self._timer_event != None:
             pygame.time.set_timer(self._timer_event, int(self._timer_value))
-    
+
     def stop(self):
         self._stop_time = pygame.time.get_ticks()
+        self._running = False
         return (self._stop_time - self._start_time)/1000.0
 
     def stop_event(self):
@@ -675,11 +734,15 @@ class Timer():
     def clear(self):
         self._start_time = pygame.time.get_ticks()
         self._stop_time = pygame.time.get_ticks()
+        self._running = False
 
     @property
     def time(self):
-        time_now = pygame.time.get_ticks()
-        return (time_now - self._start_time)/1000.0
+        if self._running:
+            time_now = pygame.time.get_ticks()
+            return (time_now - self._start_time)/1000.0
+        else:
+            return 0
 
     @property
     def time_msecs(self):
@@ -687,14 +750,17 @@ class Timer():
 
     @property
     def time_left(self):
-        time_now = pygame.time.get_ticks()
-        time_left = self._timer_value - (time_now - self._start_time)
-        time_left = max(time_left, 0)
-        return time_left/1000.0
+        if self._running:
+            time_now = pygame.time.get_ticks()
+            time_left = self._timer_value - (time_now - self._start_time)
+            time_left = max(time_left, 0)
+            return time_left/1000.0
+        else:
+            return self._timer_value/1000.0
 
     def time_up(self, restart_if_expired=True):
         expired = (self.time_left == 0)
-        if expired:
+        if expired and restart_if_expired:
             self.start()
         return expired
 
@@ -703,7 +769,8 @@ class Timer():
         self.stop_event()
         self.start()
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class LoopTimer():
     def __init__(self, max_loops, auto_start=True):
@@ -737,21 +804,24 @@ class LoopTimer():
     def loops(self):
         return self._loop_counter
 
-### --------------------------------------------------
+# --------------------------------------------------
 
-EVENT_READ_KEYBOARD   = pygame.USEREVENT
-EVENT_SCROLL_GAME     = pygame.USEREVENT + 1
-EVENT_GAME_CONTROL    = pygame.USEREVENT + 2
-EVENT_GAME_TIMER_1    = pygame.USEREVENT + 3
-EVENT_GAME_TIMER_2    = pygame.USEREVENT + 4
-EVENT_NEXT_USER_EVENT = pygame.USEREVENT + 5
+
+EVENT_READ_KEYBOARD = pygame.USEREVENT
+EVENT_SCROLL_GAME = pygame.USEREVENT + 1
+EVENT_GAME_CONTROL = pygame.USEREVENT + 2
+EVENT_GAME_FLOW = pygame.USEREVENT + 3
+EVENT_GAME_TIMER_1 = pygame.USEREVENT + 4
+EVENT_GAME_TIMER_2 = pygame.USEREVENT + 5
+EVENT_NEXT_USER_EVENT = pygame.USEREVENT + 6
 
 # Game Control Actions
-#   e.action: StartGame, GameOver, QuitGame, Board, Pass, Hint, ClearHint, Print, IncreaseScore, KillSpriteUUID,
+#   e.action: StartGame, GameOver, QuitGame, Board, Pass, Hint, ClearHint, Print, UpdateScore, KillSpriteUUID,
 #             MouseMotion, MouseLeftClick, MouseRightClick, MouseUnclick
 #   e.info: Dictionary with additional event information, including:
 #             pos   - Mouse position for MouseMotion, MouseLeftClick, MouseRightClick and MouseUnclick
-#             value - Delta value for IncreaseScore
+#             value - Delta value for UpdateScore
+
 
 class EventManager:
     def info_to_str(e):
@@ -767,6 +837,11 @@ class EventManager:
     def post(e):
         if (e.type >= pygame.NUMEVENTS):
             logger.error("Max value for event type is {0}".format(e.type))
+
+        if e.action != "MouseMotion":
+            logger.debug("Post event: Type={0}, Action={1}, Info={2}".format(
+                e.type, e.action, EventManager.info_to_str(e)))
+
         pygame.event.post(e)
 
     def create_event(event_type, action="", **info_items):
@@ -783,13 +858,14 @@ class EventManager:
 
     def gc_event(action, **info_items):
         return EventManager.create_event(EVENT_GAME_CONTROL, action, **info_items)
-        
+
     def post_game_control(action, **info_items):
         # if (action == "StartGame" or action == "GameOver" or action == "Quit") and not("broadcast" in info_items):
         #     ev = EventManager.create_event(EVENT_GAME_CONTROL, action, broadcast=True, **info_items)
         #     logger.debug("Post (broadcast): " + action)
         # else:
-        ev = EventManager.create_event(EVENT_GAME_CONTROL, action, **info_items)
+        ev = EventManager.create_event(
+            EVENT_GAME_CONTROL, action, **info_items)
         EventManager.post(ev)
 
     def is_broadcast(e):
@@ -819,7 +895,7 @@ class EventManager:
     def event_map(self, key_event_map=None, user_event_map=None):
         if key_event_map is not None:
             for event_type, action in key_event_map.items():
-                self.keyboard_event(event_type, action)       
+                self.keyboard_event(event_type, action)
         if user_event_map is not None:
             for event_type, action in user_event_map.items():
                 self.user_event(event_type, action)
@@ -836,11 +912,33 @@ class EventManager:
                 action = "MouseRightClick"
         elif e.type == pygame.MOUSEBUTTONUP:
             action = "MouseUnclick"
-        if action is not None and (e.type == pygame.MOUSEBUTTONUP or e.type == pygame.MOUSEBUTTONDOWN or e.type == pygame.MOUSEMOTION):
-            ev = EventManager.create_event(EVENT_GAME_CONTROL, action, pos=e.pos)
+        elif e.type == pygame.JOYAXISMOTION:
+            action = "JoystickMotion"
+        elif e.type == pygame.JOYBUTTONDOWN:
+            action = "JoystickButtonDown"
+        elif e.type == pygame.JOYBUTTONUP:
+            action = "JoystickButtonUp"
+
+        if action is not None and (e.type in [pygame.MOUSEBUTTONUP, pygame.MOUSEBUTTONDOWN, pygame.MOUSEMOTION]):
+            ev = EventManager.create_event(
+                EVENT_GAME_CONTROL, action, pos=e.pos)
             EventManager.post(ev)
             dealt_with = True
-        
+        if action is not None and (e.type  == pygame.JOYAXISMOTION):
+            axis = ""
+            if   e.dict["axis"] == 0: axis = "X"
+            elif e.dict["axis"] == 1: axis = "Y"
+            elif e.dict["axis"] == 2: axis = "Z"
+            ev = EventManager.create_event(
+                EVENT_GAME_CONTROL, action, joy=e.dict["joy"], axis_num=e.dict["axis"], axis=axis, value=e.dict["value"])
+            EventManager.post(ev)
+            dealt_with = True
+        if action is not None and (e.type in [pygame.JOYBUTTONDOWN, pygame.JOYBUTTONUP]):
+            ev = EventManager.create_event(
+                EVENT_GAME_CONTROL, action, joy=e.dict["joy"], button=e.dict["button"])
+            EventManager.post(ev)
+            dealt_with = True
+
         if e.type == pygame.KEYDOWN and not dealt_with and not ignore_keys:
             for kb_k, kb_a in self._keyboard.items():
                 if e.key == kb_k:
@@ -862,7 +960,8 @@ class EventManager:
 
         return dealt_with
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class RandomQueue:
     def __init__(self, queue_len, min_val, max_val, max_change=20, max_change_rate=3, init_value=0):
@@ -873,11 +972,11 @@ class RandomQueue:
         self._max_change_rate = max_change_rate
         self._next_value = 0
         self._next_change = 0
-    
+
     @property
     def queue(self):
         return self._queue
-    
+
     @property
     def next_value(self):
         return self._next_value
@@ -885,15 +984,17 @@ class RandomQueue:
     @next_value.setter
     def next_value(self, new_value):
         self._next_value = new_value
-    
+
     def append(self, dyn_max=-1):
         if dyn_max < 0:
             dyn_max = self._max
 
         self._queue.append(self._next_value)
-        self._next_change = self._next_change + random.randint(-self._max_change_rate, self._max_change_rate) * random.randint(-self._max_change_rate, self._max_change_rate)
+        self._next_change = self._next_change + \
+            random.randint(-self._max_change_rate, self._max_change_rate) * \
+            random.randint(-self._max_change_rate, self._max_change_rate)
         self._next_change = max(self._next_change, -self._max_change)
-        self._next_change = min(self._next_change,self._max_change)
+        self._next_change = min(self._next_change, self._max_change)
 
         self._next_value = self._next_value + self._next_change
         if self._next_value < self._min:
@@ -903,15 +1004,17 @@ class RandomQueue:
             self._next_value = min(self._max, dyn_max)
             self._next_change = min(self._next_change, 0)
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 # Animation modes
-ANIMATE_MANUAL       = 1
-ANIMATE_LOOP         = 2
-ANIMATE_SHUTTLE      = 3
-ANIMATE_ONCE         = 4
+ANIMATE_MANUAL = 1
+ANIMATE_LOOP = 2
+ANIMATE_SHUTTLE = 3
+ANIMATE_ONCE = 4
 ANIMATE_SHUTTLE_ONCE = 5
-ANIMATE_REVERSE      = 8  # Add to other modes
+ANIMATE_REVERSE = 8  # Add to other modes
+
 
 class Animation_Counter:
     def __init__(self):
@@ -962,7 +1065,7 @@ class Animation_Counter:
             else:
                 self.index = max(self.index - 1, 0)
         else:
-            self.index = self.index + self.step            
+            self.index = self.index + self.step
         if self.index >= self.total:
             if self.mode == ANIMATE_LOOP:
                 self.index = 0
@@ -984,7 +1087,7 @@ class Animation_Counter:
                 self.index = self.total - 1
             elif self.mode == ANIMATE_SHUTTLE:
                 self.step = 1
-                self.index = 1 if self.total>1 else 0
+                self.index = 1 if self.total > 1 else 0
             elif self.mode == ANIMATE_ONCE:
                 self.index = 0
                 self.step = 0
@@ -994,7 +1097,7 @@ class Animation_Counter:
                     self.step = 0
                 else:
                     self.step = 1
-                    self.index = 1 if self.total>1 else 0
+                    self.index = 1 if self.total > 1 else 0
 
     def prev_image(self):
         if self.mode == ANIMATE_MANUAL:
@@ -1003,9 +1106,12 @@ class Animation_Counter:
             else:
                 self.index = min(self.index + 1, self.total - 1)
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class cdkkImage:
+    imagePath = None
+
     def __init__(self):
         super().__init__()
         self._surface = None
@@ -1023,8 +1129,15 @@ class cdkkImage:
     def surface(self, new_surface):
         self._surface = new_surface
 
+    def image_path(self, filename):
+        if self.imagePath is None:
+            return filename
+        else:
+            return os.path.join(self.imagePath, filename)
+
     def load(self, filename, crop=None, scale_to=None):
-        self.surface = image = pygame.image.load(filename).convert_alpha()
+        self.surface = image = pygame.image.load(
+            self.image_path(filename)).convert_alpha()
 
         if crop is not None:
             # Crop the imported image by ... crop[left, right, top, bottom]
@@ -1034,7 +1147,7 @@ class cdkkImage:
             crop_rect.height = crop_rect.height - crop[2] - crop[3]
             crop_rect.top = crop[2]
             self.surface = pygame.Surface(crop_rect.size, pygame.SRCALPHA)
-            self.surface.blit(image, (0,0), crop_rect)
+            self.surface.blit(image, (0, 0), crop_rect)
 
         if scale_to is not None:
             self.surface = pygame.transform.smoothscale(self.surface, scale_to)
@@ -1042,7 +1155,8 @@ class cdkkImage:
         return self.surface
 
     def set_spritesheet(self, filename, cols, rows):
-        self._spritesheet = pygame.image.load(filename).convert_alpha()
+        self._spritesheet = pygame.image.load(
+            self.image_path(filename)).convert_alpha()
         self._ss_cols = cols
         self._ss_rows = rows
         ss_width = self._spritesheet.get_rect().width
@@ -1061,14 +1175,16 @@ class cdkkImage:
 
         return self.surface
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class StringLOL:
     # Multi-line string to list of lists of characters, with mirroring and mapping
     def __init__(self, ml_str, mirror_map=None):
         self._ml_str = ml_str
         self._lines = self._ml_str.splitlines()
-        while "" in self._lines: self._lines.remove("")
+        while "" in self._lines:
+            self._lines.remove("")
         self._mirror_map = mirror_map
         self._lol = None
         self._mapped_lol = None
@@ -1137,4 +1253,456 @@ class StringLOL:
 
     def printLOL(self):
         for l in self._lol:
-            print (''.join(l))
+            print(''.join(l))
+
+
+class GridMap(StringLOL):
+    def __init__(self, grid_as_mlstr, mirror_map=None, mirror_H=False, mirror_last_H=False, mirror_V=False, mirror_last_V=False):
+        super().__init__(grid_as_mlstr, mirror_map)
+        self.transform(mirror_H, mirror_last_H, mirror_V, mirror_last_V)
+        self._maps = {}
+
+    def add_map(self, map_name, map_dict, default_map=None):
+        self._maps[map_name] = self.map_as_list(map_dict, default_map)
+
+    def grid_map(self, map_name):
+        return self._maps[map_name]
+
+    def grid_map_count(self, map_name, item=True):
+        grid = self.grid_map(map_name)
+        item_list = [x for x in grid if x == item]
+        return len(item_list)
+
+    @property
+    def cols(self):
+        return len(self._lol[0])
+
+    @property
+    def rows(self):
+        return len(self._lol)
+
+    @property
+    def cols_rows(self):
+        return (self.cols, self.rows)
+
+    def cell_index(self, col, row):
+        return (row * self.cols + col)
+
+    def update_grid(self, grid_pos, grid_ch):
+        self.update_lol(grid_pos[0], grid_pos[1], grid_ch)
+
+    def find_nearest_item_R(self, grid, col, row, item=True):
+        found = False
+        xpos = col + 1
+        while not found:
+            found = (xpos >= self.cols)
+            if not found:
+                i = row * self.cols + xpos
+                if i >= 0 and i < len(grid):
+                    found = (grid[i] == item)
+            if not found:
+                xpos = xpos + 1
+
+        return (xpos if found else -1)
+
+    def find_nearest_item_L(self, grid, col, row, item=True):
+        found = False
+        xpos = col - 1
+        while not found:
+            found = (xpos < 0)
+            if not found:
+                i = row * self.cols + xpos
+                if i >= 0 and i < len(grid):
+                    found = (grid[i] == item)
+            if not found:
+                xpos = xpos - 1
+
+        return (xpos if found else -1)
+
+    def find_nearest_item_D(self, grid, col, row, item=True):
+        found = False
+        ypos = row + 1
+        while not found:
+            found = (ypos > self.rows)
+            if not found:
+                i = ypos * self.cols + col
+                if i >= 0 and i < len(grid):
+                    found = (grid[i] == item)
+            if not found:
+                ypos = ypos + 1
+
+        return (ypos if found else -1)
+
+    def find_nearest_item_U(self, grid, col, row, item=True):
+        found = False
+        ypos = row - 1
+        while not found:
+            found = (ypos < 0)
+            if not found:
+                i = ypos * self.cols + col
+                if i >= 0 and i < len(grid):
+                    found = (grid[i] == item)
+            if not found:
+                ypos = ypos - 1
+
+        return (ypos if found else -1)
+
+    def find_nearest_item(self, cell_pos, map_name, map_item=True):
+        col = cell_pos[0]
+        row = cell_pos[1]
+        grid = self.grid_map(map_name)
+
+        return {
+            'R': self.find_nearest_item_R(grid, col, row, map_item),
+            'L': self.find_nearest_item_L(grid, col, row, map_item),
+            'D': self.find_nearest_item_D(grid, col, row, map_item),
+            'U': self.find_nearest_item_U(grid, col, row, map_item)
+        }
+
+# --------------------------------------------------
+
+
+class MoveOption:
+    def __init__(self, move_dir, curr_dir, to_barrier=0, can_move=False):
+        self.dir = move_dir
+        self.can_move = can_move
+        self._distance = {}
+        self.set_distance("barrier", to_barrier)
+        self.same_dir = (move_dir == curr_dir)
+        self.is_turn = False
+        if move_dir in ("U", "D") and curr_dir in ("L", "R"):
+            self.is_turn = True
+        if move_dir in ("L", "R") and curr_dir in ("U", "D"):
+            self.is_turn = True
+        self._score = None
+        self.calc_score_fn = None
+
+    @property
+    def to_barrier(self):
+        return self.distance("barrier", 0)
+
+    def distance(self, target, not_found=None):
+        if target in self._distance:
+            return (self._distance[target])
+        else:
+            return (not_found)
+
+    def set_distance(self, target, distance):
+        self._distance[target] = distance
+        return distance
+
+    @property
+    def score(self):
+        if self.calc_score is None:
+            return 0
+        else:
+            return self._score
+
+    def calc_score(self, name):
+        self._score = self.calc_score_fn(self, name)
+
+
+def calc_move_option_score(mo, name):
+    if mo.can_move:
+        return 0
+    else:
+        return -1
+
+
+class GridActor:
+    def __init__(self, name, start_cell, speed, move_timer=None):
+        self._name = name
+        # cell_x, cell_y, cell_px, cell_py
+        self._cell_pos = [None, None, None, None]
+        self.set_cell(start_cell)
+        self._curr_dir = self._next_dir = ""
+        self._speed = speed
+        self._timer = Timer(move_timer) if move_timer is not None else None
+        self._barriers = None
+        self._target_cell = None
+        self._move_options = None
+        self._choose_at_cell = None
+        self._choose_at_time = Timer()
+        self._chosen_dir = None
+        self._history = {}
+        self._history_last_call = (None, None)
+        self.calc_score = calc_move_option_score
+
+    @property
+    def cell_pos(self):
+        return self._cell_pos
+
+    @property
+    def cell(self):
+        return ((self._cell_pos[0], self._cell_pos[1]))
+
+    @property
+    def cell_float(self):
+        return ((self._cell_pos[0]+self._cell_pos[2]/100.0, self._cell_pos[1]+self._cell_pos[3]/100.0))
+
+    def set_cell(self, next_col_row):
+        col, row = next_col_row
+        self._cell_pos = [col, row, 50, 50]
+
+    @property
+    def direction(self):
+        return self._curr_dir
+
+    @property
+    def next_dir(self):
+        return self._next_dir
+
+    @direction.setter
+    def direction(self, new_direction):
+        if new_direction in ["U", "D", "L", "R"]:
+            self._curr_dir = new_direction
+
+    @next_dir.setter
+    def next_dir(self, next_direction):
+        if next_direction in ["U", "D", "L", "R"]:
+            self._next_dir = next_direction
+
+    def next_cell(self, dir):
+        curr_cell = self.cell
+        dx, dy = self._calc_dir(dir, False)
+        return((curr_cell[0]+dx, curr_cell[1]+dy))
+
+    def _calc_dir(self, dir, use_speed=True):
+        # Convert dir string to dx, dy
+        if dir == "R":
+            dx, dy = 1, 0
+        elif dir == "L":
+            dx, dy = -1, 0
+        elif dir == "D":
+            dx, dy = 0, 1
+        elif dir == "U":
+            dx, dy = 0, -1
+        else:
+            dx, dy = 0, 0
+
+        if use_speed:
+            dx = dx * self._speed
+            dy = dy * self._speed
+
+        return (dx, dy)
+
+    def set_grid_info(self, new_barriers=None, new_target_cell=None):
+        self._barriers = new_barriers
+        self._target_cell = new_target_cell
+
+    def _can_move(self):
+        if self._barriers is None:
+            return True
+
+        x, y, px, py = self.cell_pos
+
+        dir_ok = {"R": True, "L": True, "D": True, "U": True}
+
+        # Check if barrier is too close
+        if px >= 50:
+            dir_ok["R"] = ((x+1) < self._barriers["R"]
+                           ) and (py > 35 and py < 65)
+        if px <= 50:
+            dir_ok["L"] = ((x-1) > self._barriers["L"]
+                           ) and (py > 35 and py < 65)
+        if py >= 50:
+            dir_ok["D"] = ((y+1) < self._barriers["D"]
+                           ) and (px > 35 and px < 65)
+        if py <= 50:
+            dir_ok["U"] = ((y-1) > self._barriers["U"]
+                           ) and (px > 35 and px < 65)
+
+        return dir_ok
+
+    def _add_cell_history(self):
+        if self._history_last_call == self.cell:
+            pass
+        else:
+            self._history_last_call = self.cell
+            if self.cell in self._history:
+                self._history[self.cell] += 1
+            else:
+                self._history[self.cell] = 1
+
+    def _cell_history(self, cell):
+        ret = 0
+        if cell in self._history:
+            ret = self._history[cell]
+        return ret
+
+    def move_to(self, cell_pos=None, new_dir=None):
+        if cell_pos is not None:
+            self.set_cell(cell_pos)
+            self._add_cell_history()
+
+        if new_dir is not None:
+            self.next_dir = new_dir
+
+    def move_dir(self, change_dir=False):
+        if change_dir:
+            dir = self.next_dir
+        else:
+            dir = self.direction
+        do_move = (dir != '')
+
+        if do_move:
+            dir_ok = self._can_move()
+
+            if dir_ok[dir]:
+                self.direction = dir
+            else:
+                do_move = False
+
+        if do_move and self._timer is not None:
+            do_move = self._timer.time_up()
+
+        if do_move:
+            x, y, px, py = self.cell_pos
+            dx, dy = self._calc_dir(dir)
+
+            if dx != 0:
+                py = 50
+            if dy != 0:
+                px = 50
+
+            x = x + (px + dx)/100.0
+            y = y + (py + dy)/100.0
+
+            self._cell_pos[0] = math.floor(x)
+            self._cell_pos[1] = math.floor(y)
+            self._cell_pos[2] = round((x - self._cell_pos[0]) * 100)
+            self._cell_pos[3] = round((y - self._cell_pos[1]) * 100)
+
+            self._add_cell_history()
+
+        if change_dir and do_move:
+            self._next_dir = ""
+
+        return do_move
+
+    def list_move_options(self):
+        if self._barriers is None:
+            return None
+
+        x, y, px, py = self.cell_pos
+
+        self._move_options = {
+            "R": MoveOption("R", self.direction, self._barriers["R"] - x - 1),
+            "L": MoveOption("L", self.direction, x - self._barriers["L"] - 1),
+            "D": MoveOption("D", self.direction, self._barriers["D"] - y - 1),
+            "U": MoveOption("U", self.direction, y - self._barriers["U"] - 1)}
+
+        self._move_options["R"].set_distance(
+            "target", self._target_cell[0] - x - 1)
+        self._move_options["L"].set_distance(
+            "target", x - self._target_cell[0] - 1)
+        self._move_options["D"].set_distance(
+            "target", self._target_cell[1] - y - 1)
+        self._move_options["U"].set_distance(
+            "target", y - self._target_cell[1] - 1)
+
+        for mo_key, mo_value in self._move_options.items():
+            self._move_options[mo_key].can_move = (mo_value.to_barrier > 0)
+
+            if mo_key in ("R", "L") and (py <= 35 or py >= 65):
+                self._move_options[mo_key].can_move = False
+            if mo_key in ("D", "U") and (px <= 35 or px >= 65):
+                self._move_options[mo_key].can_move = False
+
+            next_cell = self.next_cell(mo_key)
+            self._move_options[mo_key].next_cell_history = self._cell_history(
+                next_cell)
+
+            self._move_options[mo_key].calc_score_fn = self.calc_score
+            self._move_options[mo_key].calc_score(self._name)
+
+        return self._move_options.values()
+
+    def pick_move_option(self):
+        max_score = 0
+        for mo in self._move_options.values():
+            if mo.score > max_score:
+                max_score = mo.score
+
+        max_options = [x for x in self._move_options.values()
+                       if x.score == max_score]
+        chosen = random.sample(max_options, 1)
+        next_dir = chosen[0].dir
+
+        return self.choose(next_dir)
+
+    def choose_move(self, delay=0):
+        if self.cell == self._choose_at_cell:   # or self.since_last_choice < delay:
+            return self._chosen_dir
+
+        px = self.cell_pos[2]
+        py = self.cell_pos[3]
+        if (px <= 35 or px >= 65 or py <= 35 or py >= 65):
+            return self._chosen_dir
+
+        self.list_move_options()
+        return self.pick_move_option()
+
+    def choose(self, chosen_dir):
+        px = self.cell_pos[2]
+        py = self.cell_pos[3]
+        if (px > 35 and px < 65 and py > 35 and py < 65):
+            self._chosen_dir = chosen_dir
+            self._choose_at_cell = self.cell
+            self._choose_at_time.start()
+
+        return chosen_dir
+
+    @property
+    def since_last_choice(self):
+        return self._choose_at_time.time_msecs
+
+
+# --------------------------------------------------
+
+class GridMaze(GridMap):
+    def move_options(self, col_row, direction=None, barrier_map="barrier", barrier_item=True):
+        nearest = self.find_nearest_item(col_row, barrier_map, barrier_item)
+        for opt_dir, opt_nearest in nearest.items():
+            is_turn = (direction in ["U", "D"] and opt_dir in ["R", "L"]) or (
+                direction in ["L", "R"] and opt_dir in ["U", "D"])
+            # option = MoveOption()
+        return nearest
+
+# --------------------------------------------------
+
+class cdkkJoystick:
+    def __init__(self, joystick_name=None, joystick_number=None):
+        self._joystick = None
+        self.limits = None
+        self.obj_size = (0,0)
+        self.steps = None
+
+        if joystick_name is not None or joystick_number is not None:
+            pygame.joystick.init()
+            joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
+            if joystick_name is not None:
+                for j in joysticks:
+                    if j.get_name() == joystick_name:
+                        self._joystick = j
+            elif joystick_number is not None:
+                if joystick_number < pygame.joystick.get_count():
+                    self._joystick = joysticks[joystick_number]
+
+        if self._joystick is not None:
+            self._joystick.init()
+
+    def update_event(self, ev):
+        if ev.action == "JoystickMotion" and self._joystick is not None and self.limits is not None:
+            val = ev.info["value"]
+            if self.steps is not None and self.steps != 0:
+                val = ev.info["value"] = round(val * self.steps, 0) / self.steps
+            pos = 0
+            if ev.info["axis"] == "X":
+                pos = self.limits.centerx + ((self.limits.width - self.obj_size[0])/2) * val
+            if ev.info["axis"] == "Y":
+                pos = self.limits.centery + ((self.limits.height - self.obj_size[1])/2) * val
+            ev.info["pos"] = pos
+        return ev
+
+# --------------------------------------------------

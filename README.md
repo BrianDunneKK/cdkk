@@ -1,6 +1,3 @@
-"# pygame-cdkk" 
+# CoderDojo Kilkenny
 
-PyGame - CoderDojo Kilkenny
-===========================
-
-Pygame wrappers created by CoderDojo Kilkenny
+Pygame wrappers and other utility classes created by CoderDojo Kilkenny

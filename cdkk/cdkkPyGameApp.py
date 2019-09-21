@@ -1,6 +1,6 @@
 import pygame
 import os 
-from cdkkSprite import *
+from cdkk.cdkkSprite import *
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -15,6 +15,8 @@ class PyGameApp:
         "slow_update_time":321, # msecs
         "scroll_time":None,     # msecs or None
         "key_repeat_time":None, # msecs or None
+        "joystick_name":None,
+        "joystick_number":None,
         "auto_start":True       # Automatically start game
         }
 
@@ -26,6 +28,7 @@ class PyGameApp:
         self._fast_keys = False
         self._key_interval = 0
         self._key_timer = None
+        self._joystick = None
         self._slow_update_timer = None
         self._loop_timer = LoopTimer(20)
         self._scroll_timer = None
@@ -34,6 +37,7 @@ class PyGameApp:
         self._width = self.get_config("width")
         self._height = self.get_config("height")
         self._size = (self._width, self._height)
+        cdkkImage.imagePath = self.get_config("image_path")
 
     def get_config(self, attribute, default=None):
         return self._config.get(attribute, default)
@@ -62,6 +66,10 @@ class PyGameApp:
     def loop_counter(self):
         return self._loop_timer.loops
 
+    @property
+    def game_in_progress(self):
+        return (self._game_status == 2)
+
     def init(self):
         pygame.init()
         if self.get_config("full_screen"):
@@ -82,21 +90,28 @@ class PyGameApp:
             self._scroll_timer = Timer(self.get_config("scroll_time")/1000.0, EVENT_SCROLL_GAME)
             self.event_mgr.user_event(EVENT_SCROLL_GAME, "ScrollGame")
 
+        self._joystick = cdkkJoystick(self.get_config("joystick_name"), self.get_config("joystick_number"))
+
         self._clock = pygame.time.Clock()
         self._game_status = 1
 
     def add_sprite_mgr(self, sprite_mgr):
         self._sprite_mgrs[sprite_mgr] = sprite_mgr
 
-    def sprite_mgr(self, name):
+    def sprite_mgr(self, name, **sm_config):
         ret_sprite_mgr = None
         for sm in self._sprite_mgrs:
             if sm.name == name:
-                ret_sprite_mgr = sm
+                found = True
+                if len(sm_config) > 0:
+                    for key, value in sm_config.items():
+                        found = found and (sm.get_config(key) == value)
+                if found:
+                    ret_sprite_mgr = sm
         return ret_sprite_mgr
 
-    def sprite(self, sprite_mgr_name, sprite_name):
-        sm = self.sprite_mgr(sprite_mgr_name)
+    def sprite(self, sprite_mgr_name, sprite_name, **sm_config):
+        sm = self.sprite_mgr(sprite_mgr_name, **sm_config)
         return sm.sprite(sprite_name)
 
     def set_fast_keys(self, repeat_msecs):
@@ -105,6 +120,13 @@ class PyGameApp:
         self._key_interval = repeat_msecs
         self._key_timer = Timer(repeat_msecs/1000.0, EVENT_READ_KEYBOARD)
 
+    def config_joystick(self, limits=None, obj_size=None, steps=None):
+        self._joystick.limits = limits
+        if obj_size is not None:
+            self._joystick.obj_size = obj_size
+        if steps is not None:
+            self._joystick.steps = steps
+    
     def event(self, e):
         dealt_with = False
         is_broadcast = EventManager.is_broadcast(e)
@@ -120,6 +142,8 @@ class PyGameApp:
             elif e.action == "GameOver":
                 self.end_game()
                 dealt_with = True
+            elif e.action == "JoystickMotion" and self._joystick is not None:
+                e = self._joystick.update_event(e)
 
         for sm in self._sprite_mgrs:
             if (not dealt_with) or is_broadcast:

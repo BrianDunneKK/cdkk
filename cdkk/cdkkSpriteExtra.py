@@ -1,4 +1,4 @@
-from cdkkSprite import *
+from cdkk.cdkkSprite import *
 
 ### --------------------------------------------------
 
@@ -224,31 +224,26 @@ class Sprite_ImageGrid(Sprite_Grid):
     def __init__(self, name="Grid", style=None):
         super().__init__(name, style=merge_dicts(Sprite_Shape.invisible_style, Sprite_ImageGrid.default_style, style))
 
-    def setup_image_grid(self, spritesheet, sprites, barriers, xsize, cols, ysize=None, rows=None, event_on_click=None):
-        super().setup_grid((cols, rows), (xsize, ysize), event_on_click)
-
-        self._barriers = barriers
+    def setup_image_grid(self, spritesheet, sprites):
         img = cdkkImage()
         img.set_spritesheet(spritesheet[0], spritesheet[1], spritesheet[2])
-        for i in range(0,rows):
-            for j in range (0,cols):
-                r = cdkkRect(j * xsize, i * ysize, xsize, ysize)
-                img.spritesheet_image(sprites[i*cols+j], scale_to=(xsize, ysize))
+        for i in range(0, self.rows):
+            for j in range (0, self.cols):
+                img.spritesheet_image(sprites[i*self.cols+j], scale_to=self.cell_size)
+                r = self.cell_rect(j, i, True)
                 self.image.blit(img.surface, r)
 
 ### --------------------------------------------------
 
-class Sprite_ImageGridActor(Sprite_Animation):
+class Sprite_ImageGridActor(Sprite_Animation, GridActor):
     def __init__(self, name, start_cell, cell0, speed=1, move_timer=None):
-        super().__init__(name)
-        self._cell_pos = [None, None, None, None]  # cell_x, cell_y, cell_px, cell_py
-        self._barriers = None
-        self.direction = "R"
-        self._speed = speed
+        GridActor.__init__(self, name, start_cell, speed, move_timer)
+        Sprite_Animation.__init__(self, name)
+        self._image_dir = None
         self._cell0 = cell0
         self.load_image()
+        self.image_dir = "R"
         self.move_to(start_cell)
-        self._timer = Timer(move_timer) if move_timer is not None else None
 
     @property
     def centre(self):
@@ -256,83 +251,36 @@ class Sprite_ImageGridActor(Sprite_Animation):
 
     @property
     def direction(self):
-        return self._direction
+        return self._curr_dir
 
     @direction.setter
     def direction(self, new_direction):
         if new_direction in ["U", "D", "L", "R"]:
-            self._direction = new_direction
+            self._curr_dir = self.image_dir = new_direction
+
+    @property
+    def image_dir(self):
+        return self._image_dir
+
+    @image_dir.setter
+    def image_dir(self, new_direction):
+        if new_direction in ["U", "D", "L", "R"] and self._image_dir != new_direction:
+            self._image_dir = new_direction
             self.set_animation(self.name + new_direction, ANIMATE_SHUTTLE, 2)
             self._draw_reqd = True
 
-    def set_pos(self, new_cell_pos, new_barriers=None):
-        self._cell_pos = new_cell_pos
-        self._barriers = new_barriers
+    def _update_image_pos(self):
+        col, row = self.cell_float
+        self.rect.centerx = self._cell0.left + col * self._cell0.width
+        self.rect.centery = self._cell0.top + row * self._cell0.height
+        
+    def move_dir(self, change_dir=False):
+        if super().move_dir(change_dir):
+            self._update_image_pos()
 
-    def _convert_dir(self, dir):
-        # Convert dir string to dx, dy
-        if   dir == "R": dx, dy = 1, 0
-        elif dir == "L": dx, dy = -1, 0
-        elif dir == "D": dx, dy = 0, 1
-        elif dir == "U": dx, dy = 0, -1
-        else: dx, dy = 0, 0
-        return (dx, dy)
-
-    def _can_move(self):
-        x = self._cell_pos[0]
-        y = self._cell_pos[1]
-        px = self._cell_pos[2]
-        py = self._cell_pos[3]
-
-        dir_ok = { "R":True, "L":True, "D":True, "U":True }
-
-        # Check if barrier is too close
-        if px >= 50: dir_ok["R"] = ((x+1) < self._barriers["R"]) and (py>35 and py<65)
-        if px <= 50: dir_ok["L"] = ((x-1) > self._barriers["L"]) and (py>35 and py<65)
-        if py >= 50: dir_ok["D"] = ((y+1) < self._barriers["D"]) and (px>35 and px<65)
-        if py <= 50: dir_ok["U"] = ((y-1) > self._barriers["U"]) and (px>35 and px<65)
-
-        return dir_ok
-
-    def move(self, dir=None):
-        if dir is None:
-            dir = self.choose_move(self._can_move())
-
-        if dir not in ["R", "L", "D", "U"]:
-            return
-
-        dir_ok = self._can_move()
-
-        dx = dy = 0
-        if dir == "R" and dir_ok["R"]: dx = self._speed
-        if dir == "L" and dir_ok["L"]: dx = -self._speed
-        if dir == "D" and dir_ok["D"]: dy = self._speed
-        if dir == "U" and dir_ok["U"]: dy = -self._speed
-
-        if dir_ok[dir]:
-            if dx != 0: dy = ((50 - self._cell_pos[3]) / 100.0 ) * self._cell0.height
-            if dy != 0: dx = ((50 - self._cell_pos[2]) / 100.0 ) * self._cell0.width
-            self.direction = dir
-            self.move_by(dx, dy)
-
-        return dir_ok[dir]
-
-    def move_by(self, dx, dy):
-        do_move = True
-        if self._timer is not None:
-            do_move = self._timer.time_up()
-
-        if do_move: self.rect.move_physics(dx, dy)
-
-    def move_to(self, col_row, new_dir=None):
-        col, row = col_row
-        self.rect.centerx = self._cell0.left + (col + 0.5) * self._cell0.width
-        self.rect.centery = self._cell0.top + (row + 0.5) * self._cell0.height
-        self._cell_pos = [col, row, 50, 50]
-        if new_dir is not None:
-            self.direction = new_dir
-
-    def choose_move(self, can_move):
-        return "R"
+    def move_to(self, cell_pos=None, new_dir=None):
+        super().move_to(cell_pos, new_dir)
+        self._update_image_pos()
+        self.image_dir = new_dir
 
 ### --------------------------------------------------

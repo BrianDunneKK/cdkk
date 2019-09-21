@@ -6,8 +6,8 @@ import pygame
 import pygame.gfxdraw
 import uuid
 from math import sin, cos
-from cdkkUtils import *
-from cdkkColours import *
+from cdkk.cdkkUtils import *
+from cdkk.cdkkColours import *
 
 class Sprite(pygame.sprite.Sprite):
     DRAW_AS_REQD = 0
@@ -102,7 +102,8 @@ class Sprite(pygame.sprite.Sprite):
         self.rect.height = self.image.get_rect().height
 
     def _load_image_from_file(self, filename, crop=None, scale_to=None):
-        ret_image = image = pygame.image.load(filename).convert_alpha()
+        img = cdkkImage()
+        ret_image = image = pygame.image.load(img.image_path(filename)).convert_alpha()
         if crop is not None:
             # Crop the imported image by ... crop[left, right, top, bottom]
             crop_rect = image.get_rect()
@@ -221,12 +222,15 @@ class Sprite_Animation(Sprite):
         if create_mask:
             self.create_mask()
 
-    def load_spritesheet(self, set_name, spritesheet_filename, cols, rows, create_mask=True, set_anim=False, start=None, end=None):
+    def load_spritesheet(self, set_name, spritesheet_filename, cols, rows, create_mask=True, set_anim=False, start=None, end=None, length=None):
         self._animations[set_name] = []
         if start is None:
             start = 0
         if end is None:
-            end = cols*rows
+            if length is None:
+                end = cols*rows
+            else:
+                end = start + length
 
         spritesheet = cdkkImage()
         spritesheet.set_spritesheet(spritesheet_filename, cols, rows)
@@ -486,14 +490,32 @@ class Sprite_ShapeSetManager(pygame.sprite.LayeredUpdates):
 ### --------------------------------------------------
 
 class SpriteManager(pygame.sprite.LayeredUpdates):
-    def __init__(self, name):
+    def __init__(self, name, **sm_config):
         super().__init__()
         self.name = name
-        self._game_active = None
+        self._game_active = False
+
+        self._sm_config = {}
+        for key, value in sm_config.items():
+            self.set_config(key, value)
 
     @property
     def game_is_active(self):
         return self._game_active
+
+    @property
+    def player(self):
+        player = self.get_config("player")
+        if player is not None:
+            return player
+        else:
+            return self.get_config("Player")
+
+    def get_config(self, attribute, default=None):
+        return self._sm_config.get(attribute, default)
+
+    def set_config(self, attribute, value):
+        self._sm_config[attribute] = value
 
     def draw(self, surface):
         for s in self.sprites():
@@ -608,7 +630,34 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
 class SpriteGroup(pygame.sprite.Group):
     def collide(self, sprite_group, dokilla=False, dokillb=False, collided=pygame.sprite.collide_mask):
         coll_dict = pygame.sprite.groupcollide(self, sprite_group, dokilla, dokillb, collided)
-        # logger.debug("Collide: {0} with {1}".format("A", "B"))
         return coll_dict
+
+### --------------------------------------------------
+
+class SpriteManager_SplashScreen(SpriteManager):
+    def __init__(self, limits, display_time, filename):
+        super().__init__("Splash Screen Manager")
+        splash = Sprite(name="Splash Screen")
+        splash.load_image_from_file(filename)
+        splash.rect.center = limits.center
+        self.add(splash)
+        self._splash_displayed = True
+        self._clear_timer = Timer(display_time, EVENT_GAME_FLOW)
+
+    def clear_splash(self):
+        self.empty()
+        self._splash_displayed = False
+
+    def start_game(self):
+        super().start_game()
+        self.clear_splash()
+
+    def event(self, e):
+        dealt_with = super().event(e)
+        if not dealt_with and e.type == EVENT_GAME_FLOW:
+            if self._splash_displayed:
+                self.clear_splash()
+                dealt_with = True
+        return dealt_with
 
 ### --------------------------------------------------
