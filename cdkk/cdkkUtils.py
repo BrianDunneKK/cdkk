@@ -79,6 +79,9 @@ AT_LIMIT_BOTTOM = 8
 AT_LIMIT_INSIDE_X = 16
 AT_LIMIT_INSIDE_Y = 32
 
+CONTROL_KEYBOARD = 1
+CONTROL_MOUSE = 2
+CONTROL_JOYSTICK = 4
 
 # --------------------------------------------------
 

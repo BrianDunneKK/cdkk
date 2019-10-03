@@ -499,6 +499,9 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
         for key, value in sm_config.items():
             self.set_config(key, value)
 
+        if self.get_config("control_type") is None:
+            self.set_config("control_type", CONTROL_KEYBOARD+CONTROL_MOUSE)
+
     @property
     def game_is_active(self):
         return self._game_active
@@ -510,6 +513,18 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
             return player
         else:
             return self.get_config("Player")
+
+    @property
+    def use_keyboard(self):
+        return ((self.get_config("control_type") & CONTROL_KEYBOARD) > 0)
+
+    @property
+    def use_mouse(self):
+        return ((self.get_config("control_type") & CONTROL_MOUSE) > 0)
+
+    @property
+    def use_joystick(self):
+        return ((self.get_config("control_type") & CONTROL_JOYSTICK) > 0)
 
     def get_config(self, attribute, default=None):
         return self._sm_config.get(attribute, default)
