@@ -9,6 +9,7 @@ from math import sin, cos
 from cdkk.cdkkUtils import *
 from cdkk.cdkkColours import *
 
+
 class Sprite(pygame.sprite.Sprite):
     DRAW_AS_REQD = 0
     DRAW_ALWAYS = 1
@@ -103,7 +104,8 @@ class Sprite(pygame.sprite.Sprite):
 
     def _load_image_from_file(self, filename, crop=None, scale_to=None):
         img = cdkkImage()
-        ret_image = image = pygame.image.load(img.image_path(filename)).convert_alpha()
+        ret_image = image = pygame.image.load(
+            img.image_path(filename)).convert_alpha()
         if crop is not None:
             # Crop the imported image by ... crop[left, right, top, bottom]
             crop_rect = image.get_rect()
@@ -112,14 +114,14 @@ class Sprite(pygame.sprite.Sprite):
             crop_rect.height = crop_rect.height - crop[2] - crop[3]
             crop_rect.top = crop[2]
             ret_image = pygame.Surface(crop_rect.size, pygame.SRCALPHA)
-            ret_image.blit(image, (0,0), crop_rect)
+            ret_image.blit(image, (0, 0), crop_rect)
         if scale_to is not None:
             ret_image = pygame.transform.smoothscale(ret_image, scale_to)
         return ret_image
 
     def load_image(self):
         pass
-        
+
     def load_image_from_file(self, filename, crop=None, scale_to=None, create_mask=True):
         if scale_to == "style":
             w = self.get_style("width")
@@ -161,18 +163,20 @@ class Sprite(pygame.sprite.Sprite):
         else:
             return pygame.Surface((width, height)).convert()
 
-    def add_image(self, image, dest=(0,0)):
+    def add_image(self, image, dest=(0, 0)):
         return self.image.blit(image, dest)
 
     def setup_mouse_events(self, event_on_click, event_on_unclick=None):
         if type(event_on_click).__name__ == "Event" or event_on_click == None:
             self.event_on_click = event_on_click
         else:
-            logger.error("Sprite.setup_mouse_events(): event_on_click must be of type Event")
+            logger.error(
+                "Sprite.setup_mouse_events(): event_on_click must be of type Event")
         if type(event_on_unclick).__name__ == "Event" or event_on_unclick == None:
             self.event_on_unclick = event_on_unclick
         else:
-            logger.error("Sprite.setup_mouse_events(): event_on_unclick must be of type Event")
+            logger.error(
+                "Sprite.setup_mouse_events(): event_on_unclick must be of type Event")
         self.event_on_unclick = event_on_unclick
 
     def create_mask(self):
@@ -202,7 +206,8 @@ class Sprite(pygame.sprite.Sprite):
     def end_game(self):
         self._game_active = False
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class Sprite_Animation(Sprite):
     def __init__(self, name=""):
@@ -215,8 +220,9 @@ class Sprite_Animation(Sprite):
         self._animations[set_name] = []
         for i in range(count_from, count_from + count):
             filename = file_format.format(i)
-            self._animations[set_name].append(self._load_image_from_file(filename, crop))
-        
+            self._animations[set_name].append(
+                self._load_image_from_file(filename, crop))
+
         self.image = self._animations[set_name][0]
         self._image_size_to_rect()
         if create_mask:
@@ -234,7 +240,7 @@ class Sprite_Animation(Sprite):
 
         spritesheet = cdkkImage()
         spritesheet.set_spritesheet(spritesheet_filename, cols, rows)
-        for i in range(start,end):
+        for i in range(start, end):
             self._animations[set_name].append(spritesheet.spritesheet_image(i))
 
         self.image = self._animations[set_name][0]
@@ -248,7 +254,8 @@ class Sprite_Animation(Sprite):
     def set_animation(self, new_animation, mode=ANIMATE_LOOP, loops_per_image=None):
         if self._anim_name != new_animation and new_animation in self._animations:
             self._anim_name = new_animation
-            self._anim_config.setup(len(self._animations[new_animation]), mode, loops_per_image)
+            self._anim_config.setup(
+                len(self._animations[new_animation]), mode, loops_per_image)
             self._draw_reqd = True
 
     def draw(self, draw_flag=Sprite.DRAW_ALWAYS, clear_draw_reqd=True):
@@ -273,7 +280,7 @@ class Sprite_Animation(Sprite):
         elif using_frame != self._anim_config.index:
             reset_frame = self._anim_config.current_image
             self._anim_config.current_image = using_frame
-        
+
         self.create_mask()
 
         if reset_animation is not None:
@@ -281,17 +288,18 @@ class Sprite_Animation(Sprite):
         if reset_frame is not None:
             self._anim_config.current_image = reset_frame
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class Sprite_Shape(Sprite):
     default_style = {
-        "fillcolour":"white", "outlinecolour":"black", "outlinewidth":3,
-        "altcolour":"black", "highlightcolour":"yellow", "shape":"Rectangle",
-        "width":None, "height":None }
+        "fillcolour": "white", "outlinecolour": "black", "outlinewidth": 3,
+        "altcolour": "black", "highlightcolour": "yellow", "shape": "Rectangle",
+        "width": None, "height": None, "invisible": False}
     invisible_style = {
-        "fillcolour":None, "outlinecolour":None, "outlinewidth":0,
-        "altcolour":None, "highlightcolour":None, "shape":"Rectangle",
-        "width":None, "height":None }
+        "fillcolour": None, "outlinecolour": None, "outlinewidth": 0,
+        "altcolour": None, "highlightcolour": None, "shape": "Rectangle",
+        "width": None, "height": None, "invisible": True}
 
     def __init__(self, name="", rect=None, style=None):
         super().__init__(name, style=merge_dicts(Sprite_Shape.default_style, style))
@@ -311,19 +319,30 @@ class Sprite_Shape(Sprite):
         # Rectangle, Ellipse, Polygon, Arc
         self.set_style("shape", new_shape)
 
+    @property
+    def invisible(self):
+        return self.get_style("invisible", False)
+
+    @invisible.setter
+    def invisible(self, new_invisible):
+        self.set_style("invisible", new_invisible)
+        self.draw(Sprite.DRAW_AFTER_CLEAR)
+
     def setup_polygon(self, pointlist):
         self._pointlist = pointlist.copy()
         self._draw_reqd = True
 
     def setup_pie(self, start_angle, stop_angle):
-        self._pie_angles = [start_angle * 3.14159 / 180, stop_angle * 3.14159 / 180]
+        self._pie_angles = [start_angle * 3.14159 /
+                            180, stop_angle * 3.14159 / 180]
         x0 = self.rect.width/2
         y0 = self.rect.height/2
 
         ndiv = 360
         delta = (self._pie_angles[1] - self._pie_angles[0]) / ndiv
         angles = [self._pie_angles[0] + i*delta for i in range(ndiv + 1)]
-        self._pointlist = [(x0, y0)] + [(x0 + self.rect.width/2 * cos(theta), y0 - self.rect.width/2 * sin(theta)) for theta in angles]
+        self._pointlist = [(x0, y0)] + [(x0 + self.rect.width/2 * cos(theta),
+                                         y0 - self.rect.width/2 * sin(theta)) for theta in angles]
         self._draw_reqd = True
 
     def create_canvas(self, width=None, height=None):
@@ -339,9 +358,9 @@ class Sprite_Shape(Sprite):
 
     def draw(self, draw_flag=Sprite.DRAW_AS_REQD, clear_draw_reqd=True):
         super().draw(draw_flag, clear_draw_reqd=False)
-        if self._draw_reqd or draw_flag>Sprite.DRAW_AS_REQD:
+        if (self._draw_reqd or draw_flag > Sprite.DRAW_AS_REQD) and not self.invisible:
             draw_rect = self.rect.copy()
-            draw_rect.topleft = (0,0)
+            draw_rect.topleft = (0, 0)
             fill_col = self.get_style_colour("fillcolour")
             line_col = self.get_style_colour("outlinecolour")
 
@@ -349,7 +368,8 @@ class Sprite_Shape(Sprite):
                 if (fill_col is not None):
                     pygame.draw.ellipse(self.image, fill_col, draw_rect)
                 if (line_col is not None):
-                    pygame.draw.ellipse(self.image, line_col, draw_rect, self.get_style("outlinewidth"))
+                    pygame.draw.ellipse(
+                        self.image, line_col, draw_rect, self.get_style("outlinewidth"))
 
             # elif self.shape.lower() == "arc":
             #     if (fill_col is not None):
@@ -360,26 +380,32 @@ class Sprite_Shape(Sprite):
             elif self.shape.lower() == "polygon" or self.shape.lower() == "pie":
                 if self._pointlist is not None:
                     if (fill_col is not None):
-                        pygame.draw.polygon(self.image, fill_col, self._pointlist)
+                        pygame.draw.polygon(
+                            self.image, fill_col, self._pointlist)
                     if (line_col is not None):
-                        pygame.draw.polygon(self.image, line_col, self._pointlist, self.get_style("outlinewidth"))
+                        pygame.draw.polygon(
+                            self.image, line_col, self._pointlist, self.get_style("outlinewidth"))
 
-            else: # Rectangle
+            else:  # Rectangle
                 if (fill_col is not None):
                     pygame.draw.rect(self.image, fill_col, draw_rect)
                 if (line_col is not None):
-                    pygame.draw.rect(self.image, line_col, draw_rect, self.get_style("outlinewidth"))
-           
+                    pygame.draw.rect(self.image, line_col,
+                                     draw_rect, self.get_style("outlinewidth"))
+
         if clear_draw_reqd:
             self._draw_reqd = False
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class Sprite_TextBox(Sprite_Shape):
-    default_style = { "textcolour":"black", "textsize":36, "align_horiz":"C", "align_vert":"M", "textformat":"{0}" }
+    default_style = {"textcolour": "black", "textsize": 36,
+                     "align_horiz": "C", "align_vert": "M", "textformat": "{0}"}
 
     def __init__(self, name_text="", rect=None, style=None, auto_size=False, name_is_text=True):
-        super().__init__(name_text, rect, style=merge_dicts(Sprite_TextBox.default_style, style))
+        super().__init__(name_text, rect, style=merge_dicts(
+            Sprite_TextBox.default_style, style))
         if name_is_text:
             self._text = name_text
         else:
@@ -402,7 +428,7 @@ class Sprite_TextBox(Sprite_Shape):
 
     @property
     def text_format(self):
-        return 
+        return
 
     @text_format.setter
     def text_format(self, new_text_format):
@@ -432,12 +458,14 @@ class Sprite_TextBox(Sprite_Shape):
 
     def draw(self, draw_flag=Sprite.DRAW_AS_REQD, clear_draw_reqd=True):
         super().draw(draw_flag, clear_draw_reqd=False)
-        if self._draw_reqd or draw_flag>Sprite.DRAW_AS_REQD:
-            text_image = self.font.render(self.text, True, self.get_style_colour("textcolour"))
+        if (self._draw_reqd or draw_flag > Sprite.DRAW_AS_REQD) and not self.invisible:
+            text_image = self.font.render(
+                self.text, True, self.get_style_colour("textcolour"))
             text_rect = text_image.get_rect()
 
             if self._auto_size:
-                self.image = self.create_surface(text_rect.width, text_rect.height)
+                self.image = self.create_surface(
+                    text_rect.width, text_rect.height)
                 self._image_size_to_rect()
                 super().draw(Sprite.DRAW_ALWAYS, clear_draw_reqd=False)
 
@@ -451,35 +479,29 @@ class Sprite_TextBox(Sprite_Shape):
                 text_rect.centerx = self.rect.width/2
             elif self.get_style("align_horiz") == "R":
                 text_rect.right = self.rect.width
-            
+
             if self.get_style("align_vert") == "T":
                 text_rect.top = 0
             elif self.get_style("align_vert") == "M":
                 text_rect.centery = self.rect.height/2
             elif self.get_style("align_vert") == "B":
                 text_rect.bottom = self.rect.height
-            
+
             self.image.blit(text_image, text_rect)
 
         if clear_draw_reqd:
             self._draw_reqd = False
 
-### --------------------------------------------------
+# --------------------------------------------------
 
-class Sprite_ShapeSetManager(pygame.sprite.LayeredUpdates):
-    def __init__(self, name, rect, relative_pos=False):
+
+class SpriteSet(pygame.sprite.LayeredUpdates):
+    def __init__(self, name, rect):
         super().__init__()
         self.name = name
-        self.width = rect.width
-        self.height = rect.height
-        if relative_pos:
-            self.offsetx = 0
-            self.offsety = 0
-        else:
-            self.offsetx = rect.left
-            self.offsety = rect.top
+        self.set_rect = rect
 
-    def add_shape(self, sprite):
+    def add_shape(self, sprite, relative_pos=False):
         super().add(sprite)
 
     def draw_shapes(self, image):
@@ -487,7 +509,28 @@ class Sprite_ShapeSetManager(pygame.sprite.LayeredUpdates):
             s.image = image
             s.draw()
 
-### --------------------------------------------------
+# --------------------------------------------------
+
+
+class SpriteGridSet(SpriteSet):
+    def __init__(self, name, rect, xcols, yrows, margin=0):
+        super().__init__(name, rect)
+        self.xcols = xcols
+        self.yrows = yrows
+        self.margin = margin
+
+    def add_shape_xy(self, sprite, x, y, relative_pos=False):
+        w = (self.set_rect.width - (self.xcols-1)*self.margin) / self.xcols
+        h = (self.set_rect.height - (self.yrows-1)*self.margin) / self.yrows
+        l = self.set_rect.left + (self.set_rect.width*x)/self.xcols
+        t = self.set_rect.top + (self.set_rect.height*y)/self.yrows
+        new_rect = cdkkRect(l, t, w, h)
+        sprite.rect = new_rect
+        super().add_shape(sprite, relative_pos)
+
+
+# --------------------------------------------------
+
 
 class SpriteManager(pygame.sprite.LayeredUpdates):
     def __init__(self, name, **sm_config):
@@ -590,22 +633,23 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
             sprite_collisions.append((spr, spr_list[0].rect))
 
         return sprite_collisions
-    
+
     def find_click(self, x, y, click_event=True):
         sprite_str = ""
         for s in self.sprites():
             if s.rect.collidepoint(x, y) and sprite_str == "":
-                sprite_str = s.name
                 if s.event_on_click != None and click_event:
+                    sprite_str = s.name
                     ev = s.event_on_click
                     ev.pos = x, y
                     EventManager.post(ev)
                 elif s.event_on_unclick != None and not click_event:
+                    sprite_str = s.name
                     ev = s.event_on_unclick
                     ev.pos = x, y
                     EventManager.post(ev)
         return sprite_str
- 
+
     def remove_by_class(self, sprite_class):
         for p in self.sprites():
             if type(p).__name__ == sprite_class:
@@ -616,7 +660,8 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
         if e.type == EVENT_GAME_CONTROL:
             if e.action == "MouseLeftClick" or e.action == "MouseUnclick":
                 x, y = e.info['pos']
-                sprite_str = self.find_click(x,y,(e.action == "MouseLeftClick"))
+                sprite_str = self.find_click(
+                    x, y, (e.action == "MouseLeftClick"))
                 dealt_with = (sprite_str != "")
             elif e.action == "KillSpriteUUID":
                 dealt_with = self.kill_uuid(e.info['uuid'])
@@ -640,14 +685,16 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
         self._game_active = False
 
 
-### --------------------------------------------------
+# --------------------------------------------------
 
 class SpriteGroup(pygame.sprite.Group):
     def collide(self, sprite_group, dokilla=False, dokillb=False, collided=pygame.sprite.collide_mask):
-        coll_dict = pygame.sprite.groupcollide(self, sprite_group, dokilla, dokillb, collided)
+        coll_dict = pygame.sprite.groupcollide(
+            self, sprite_group, dokilla, dokillb, collided)
         return coll_dict
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class SpriteManager_SplashScreen(SpriteManager):
     def __init__(self, limits, display_time, filename):
@@ -675,4 +722,4 @@ class SpriteManager_SplashScreen(SpriteManager):
                 dealt_with = True
         return dealt_with
 
-### --------------------------------------------------
+# --------------------------------------------------
