@@ -1,7 +1,7 @@
-import pygame
-import cdkk
 import sys
 sys.path.insert(0, "..\cdkk")
+import pygame
+import cdkk
 
 
 # --------------------------------------------------
