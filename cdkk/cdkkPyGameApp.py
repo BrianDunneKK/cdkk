@@ -1,10 +1,11 @@
 import pygame
-import os 
+import os
+from cdkk.cdkkApp import *
 from cdkk.cdkkSprite import *
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
-class PyGameApp:
+class PyGameApp(cdkkApp):
     default_config = {
         "caption":"CoderDojo Kilkenny",
         "width":1000,
@@ -16,12 +17,11 @@ class PyGameApp:
         "scroll_time":None,     # msecs or None
         "key_repeat_time":None, # msecs or None
         "joystick_name":None,
-        "joystick_number":None,
-        "auto_start":True       # Automatically start game
+        "joystick_number":None
         }
 
-    def __init__(self, style=None):
-        self._game_status = 0   # 0=Pre-init, 1=Initialised, 2=Game-in-progess, 3=Game over, 8=Fail-and-exit, 9=Quitting
+    def __init__(self, app_config=None):
+        super().__init__(None)
         self._sprite_mgrs = {}
         self.display_surface = None
         self.event_mgr = EventManager()
@@ -32,27 +32,11 @@ class PyGameApp:
         self._slow_update_timer = None
         self._loop_timer = LoopTimer(20)
         self._scroll_timer = None
-        self._config = {}
-        self.update_config(merge_dicts(PyGameApp.default_config, style))
+        self.update_config(merge_dicts(cdkkApp.default_config, PyGameApp.default_config, app_config))
         self._width = self.get_config("width")
         self._height = self.get_config("height")
         self._size = (self._width, self._height)
         cdkkImage.imagePath = self.get_config("image_path")
-
-    def get_config(self, attribute, default=None):
-        return self._config.get(attribute, default)
-
-    def set_config(self, attribute, new_value):
-        if attribute is not None:
-            self._config[attribute] = new_value
-            if attribute == "slow_update_time":
-                self._slow_update_timer = Timer(new_value/1000.0)
-
-    def update_config(self, *updated__configs):
-        for cfg in updated__configs:
-            if cfg is not None:
-                for key, value in cfg.items():
-                    self.set_config(key, value)
 
     @property
     def boundary(self):
@@ -66,11 +50,8 @@ class PyGameApp:
     def loop_counter(self):
         return self._loop_timer.loops
 
-    @property
-    def game_in_progress(self):
-        return (self._game_status == 2)
-
     def init(self):
+        super().init()
         pygame.init()
         if self.get_config("full_screen"):
             display_modes = pygame.display.list_modes()
@@ -91,9 +72,8 @@ class PyGameApp:
             self.event_mgr.user_event(EVENT_SCROLL_GAME, "ScrollGame")
 
         self._joystick = cdkkJoystick(self.get_config("joystick_name"), self.get_config("joystick_number"))
-
         self._clock = pygame.time.Clock()
-        self._game_status = 1
+        return True
 
     def add_sprite_mgr(self, sprite_mgr):
         self._sprite_mgrs[sprite_mgr] = sprite_mgr
@@ -154,28 +134,22 @@ class PyGameApp:
 
         return dealt_with
 
-    def exit_app(self):
-        self._game_status = 9
-
     def start_game(self):
-        self._game_status = 2
+        super().start_game()
         for sm in self._sprite_mgrs:
             sm.start_game()
 
     def end_game(self):
-        self._game_status = 3
+        super().end_game()
         for sm in self._sprite_mgrs:
             sm.end_game()
 
-    def draw(self, flip=True):
-        if self.get_config("background_fill") is not None:
-            self.display_surface.fill(colours[self.get_config("background_fill")])
-        for sm in self._sprite_mgrs:
-            sm.draw(self.display_surface)  # Ask each sprite manager to draw its sprites
-        if flip:
-            pygame.display.flip()
-    
+    def manage_events(self):
+        for event in EventManager.get():
+            self.event(event)
+
     def update(self):
+        super().update()
         for sm in self._sprite_mgrs:
             sm.update()  # Ask each sprite manager to update its sprites
     
@@ -184,25 +158,22 @@ class PyGameApp:
                 sm.slow_update()
             self._slow_update_timer.start()
 
+    def draw(self, flip=True):
+        super().draw()
+        if self.get_config("background_fill") is not None:
+            self.display_surface.fill(colours[self.get_config("background_fill")])
+        for sm in self._sprite_mgrs:
+            sm.draw(self.display_surface)  # Ask each sprite manager to draw its sprites
+        if flip:
+            pygame.display.flip()
+   
+    def manage_loop(self):
+        self._clock.tick(self.get_config("frame_rate"))
+        self._loop_timer.append()
+
     def cleanup(self):
         for sm in self._sprite_mgrs:
             sm.cleanup()
         pygame.quit()
+        super().cleanup()
  
-    def execute(self):
-        if self.init() == False:
-            self._game_status = 8
- 
-        if self.get_config("auto_start"):
-            self.start_game()
-
-        while self._game_status < 8:
-            for event in EventManager.get():
-                self.event(event)
-            self.update()
-            self.draw()
-            self._clock.tick(self.get_config("frame_rate"))
-            self._loop_timer.append()
-            
-        self.cleanup()
-

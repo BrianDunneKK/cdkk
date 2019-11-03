@@ -5,6 +5,7 @@ import math
 from collections import deque
 import random
 import os
+import msvcrt
 
 # --------------------------------------------------
 
@@ -36,6 +37,11 @@ def merge_dicts(*dict_args):
 
 # --------------------------------------------------
 
+def getch(as_upper=True):
+    ch = msvcrt.getch().decode('ASCII')
+    return (ch if not as_upper else ch.upper())
+
+# --------------------------------------------------
 
 # Sprite bounces on its ...
 BOUNCE_LEFT = 1
