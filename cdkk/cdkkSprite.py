@@ -1,6 +1,9 @@
 # To Do: msecs_per_image not implemented
-# To Do: Chanage find_collisions to use SpriteGroup.collide()
+# To Do: Change find_collisions to use SpriteGroup.collide()
 # To Do: Change remove_by_class() to find_sprites_by_desc()
+# To Do: Remove SpriteSet.draw_shapes()
+# To Do: Merge SpriteSet into SpriteGroup
+# To Do: Move style to own class and add support for CSS
 
 import pygame
 import pygame.gfxdraw
@@ -526,8 +529,16 @@ class SpriteGridSet(SpriteSet):
         t = self.set_rect.top + (self.set_rect.height*y)/self.yrows
         new_rect = cdkkRect(l, t, w, h)
         sprite.rect = new_rect
+        sprite.set_desc("xcol", x)
+        sprite.set_desc("yrow", y)
         super().add_shape(sprite, relative_pos)
 
+    def find_shape_xy(self, x, y):
+        ret_sprite = None
+        for s in self.sprites():
+            if s.get_desc("xcol") == x and s.get_desc("yrow") == y:
+                ret_sprite = s
+        return ret_sprite
 
 # --------------------------------------------------
 
@@ -587,10 +598,13 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
                 ret_sprite = s
         return ret_sprite
 
-    def find_sprites_by_desc(self, attribute, value):
+    def find_sprites_by_desc(self, attr1, value1, attr2=None, value2=None):
         ret_sprites = []
         for s in self.sprites():
-            if s.get_desc(attribute) == value:
+            found = (s.get_desc(attr1) == value1)
+            if found and attr2 is not None and value2 is not None:
+                found = (s.get_desc(attr2) == value2)
+            if found:
                 ret_sprites.append(s)
         return ret_sprites
 
