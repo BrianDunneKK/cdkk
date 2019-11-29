@@ -8,12 +8,9 @@ import cdkk
 
 
 class Sprite_Ball(cdkk.Sprite_Shape):
-    default_style = {"fillcolour": "red3",
-                     "outlinecolour": None, "shape": "Ellipse"}
-
     def __init__(self, posx, posy):
         super().__init__(name="Ball", rect=cdkk.cdkkRect(
-            posx, posy, 50, 50), style=Sprite_Ball.default_style)
+            posx, posy, 50, 50), style={"fillcolour": "red3", "outlinecolour": None, "shape": "Ellipse"})
         self.rect.go()
 
     def update(self):

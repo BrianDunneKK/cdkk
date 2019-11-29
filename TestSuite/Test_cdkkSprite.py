@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, "..\cdkk")
+sys.path.insert(0, "cdkk")
 import pygame
 import cdkk
 
@@ -162,7 +162,7 @@ app_config = {
     "width": 1200, "height": 800,
     "background_fill": "burlywood",
     "caption": "Test PyGame - Sprite",
-    "image_path": "TestSuite\\"
+    "image_path": "cdkk\\TestSuite\\"
 }
 theApp = TestPyGameApp(app_config)
 theApp.execute()

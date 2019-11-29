@@ -1,47 +1,53 @@
 from cdkk.cdkkSprite import *
+from cdkk.cdkkColours import *
+
+sprite_extra_styles = {
+    "Label": {"fillcolour":None, "outlinecolour":None, "textsize":36 },
+    "DynamicText": {"outlinecolour":None, "textsize":36 },
+    "Button": {"fillcolour":"gray80", "outlinecolour":"black", "textsize":36 },
+    "GameOver": { "textcolour":"red3", "textsize":72, "fillcolour":"yellow1", "outlinecolour":"red3", "outlinewidth":5, "width":400, "height":100},
+    "BoardGame_Board": {"fillcolour":"black", "outlinecolour":None, "altcolour":"white", "highlightcolour":"violetred1", "outlinewidth":3},
+    "BoardGame_Piece": {"outlinecolour":None, "shape":"Ellipse", "piecemargin":20 },
+    "ImageGrid": {"fillcolour":"black"}
+
+}
+stylesheet.add_stylesheet(sprite_extra_styles)
+
+# stylesheet.style("ImageGrid")
+
 
 ### --------------------------------------------------
 
 class Sprite_Label(Sprite_TextBox):
-    default_style = {"fillcolour":None, "outlinecolour":None, "textsize":36 }
-
     def __init__(self, name_text="", rect=None, style=None):
-        super().__init__(name_text, rect, style=merge_dicts(Sprite_Label.default_style, style), auto_size=True, name_is_text=True)
+        super().__init__(name_text, rect, style=merge_dicts(stylesheet.style("Label"), style), auto_size=True, name_is_text=True)
 
 ### --------------------------------------------------
 
 class Sprite_DynamicText(Sprite_TextBox):
-    default_style = {"outlinecolour":None, "textsize":36 }
-
     def __init__(self, name_text="", rect=None, style=None):
-        super().__init__(name_text, rect, style=merge_dicts(Sprite_DynamicText.default_style, style), auto_size=False)
+        super().__init__(name_text, rect, style=merge_dicts(stylesheet.style("DynamicText"), style), auto_size=False)
 
 ### --------------------------------------------------
 
 class Sprite_Button(Sprite_TextBox):
-    default_style = {"fillcolour":"gray80", "outlinecolour":"black", "textsize":36 }
-
     def __init__(self, name_text, rect=None, event_on_click=None, event_on_unclick=None, style=None):
-        super().__init__(name_text, rect, style=merge_dicts(Sprite_Button.default_style, style), auto_size=False, name_is_text=True)
+        super().__init__(name_text, rect, style=merge_dicts(stylesheet.style("Button"), style), auto_size=False, name_is_text=True)
         self.setup_mouse_events(event_on_click, event_on_unclick)
 
 ### --------------------------------------------------
 
 class Sprite_GameOver(Sprite_TextBox):
-    default_style = { "textcolour":"red3", "textsize":72, "fillcolour":"yellow1", "outlinecolour":"red3", "outlinewidth":5, "width":400, "height":100}
-
     def __init__(self, rect, style=None):
-        super().__init__("Game Over", rect, style=merge_dicts(Sprite_GameOver.default_style, style), auto_size=False)
+        super().__init__("Game Over", rect, style=merge_dicts(stylesheet.style("GameOver"), style), auto_size=False)
         self.style_to_size()
         self.rect.center = rect.center
 
 ### --------------------------------------------------
 
 class Sprite_Grid(Sprite):
-    default_style = Sprite_Shape.invisible_style
-
     def __init__(self, name="Grid", style=None):
-        super().__init__(name, style=merge_dicts(Sprite_Grid.default_style, style))
+        super().__init__(name, style=merge_dicts(stylesheet.style("Invisible"), style))
         self._rows = self._cols = 0
         self._cell0 = pygame.Rect(0,0,0,0)
         self._xsize = self._ysize = 0
@@ -117,10 +123,8 @@ class Sprite_Grid(Sprite):
 ### --------------------------------------------------
 
 class Sprite_BoardGame_Board(Sprite_Grid):
-    default_style = {"fillcolour":"black", "outlinecolour":None, "altcolour":"white", "highlightcolour":"violetred1", "outlinewidth":3}
-
     def __init__(self, name="Board", style=None):
-        super().__init__(name, style=merge_dicts(Sprite_BoardGame_Board.default_style, style))
+        super().__init__(name, style=merge_dicts(stylesheet.style("BoardGame_Board"), style))
 
     def setup_board_grid(self, xsize, cols, event_on_click=None, rows=None, ysize=None):
         super().setup_grid((cols, rows), (xsize, ysize), event_on_click)
@@ -165,10 +169,8 @@ class Sprite_BoardGame_Board(Sprite_Grid):
 ### --------------------------------------------------
 
 class Sprite_BoardGame_Piece(Sprite_Shape):
-    default_style = { "outlinecolour":None, "shape":"Ellipse", "piecemargin":20 }
-
     def __init__(self, name, board, col=0, row=0, style=None):
-        super().__init__(name, style=merge_dicts(Sprite_BoardGame_Piece.default_style, style))
+        super().__init__(name, style=merge_dicts(stylesheet.style("BoardGame_Piece"), style))
         self._row = row
         self._col = col
         self._board = board
@@ -219,10 +221,8 @@ class Sprite_BoardGame_Piece(Sprite_Shape):
 ### --------------------------------------------------
 
 class Sprite_ImageGrid(Sprite_Grid):
-    default_style = {"fillcolour":"black"}
-
     def __init__(self, name="Grid", style=None):
-        super().__init__(name, style=merge_dicts(Sprite_Shape.invisible_style, Sprite_ImageGrid.default_style, style))
+        super().__init__(name, style=merge_dicts(stylesheet.style("Invisible"), stylesheet.style("ImageGrid"), style))
 
     def setup_image_grid(self, spritesheet, sprites):
         img = cdkkImage()
@@ -284,3 +284,31 @@ class Sprite_ImageGridActor(Sprite_Animation, GridActor):
         self.image_dir = new_dir
 
 ### --------------------------------------------------
+
+class SpriteManager_SplashScreen(SpriteManager):
+    def __init__(self, limits, display_time, filename):
+        super().__init__("Splash Screen Manager")
+        splash = Sprite(name="Splash Screen")
+        splash.load_image_from_file(filename)
+        splash.rect.center = limits.center
+        self.add(splash)
+        self._splash_displayed = True
+        self._clear_timer = Timer(display_time, EVENT_GAME_FLOW)
+
+    def clear_splash(self):
+        self.empty()
+        self._splash_displayed = False
+
+    def start_game(self):
+        super().start_game()
+        self.clear_splash()
+
+    def event(self, e):
+        dealt_with = super().event(e)
+        if not dealt_with and e.type == EVENT_GAME_FLOW:
+            if self._splash_displayed:
+                self.clear_splash()
+                dealt_with = True
+        return dealt_with
+
+# --------------------------------------------------

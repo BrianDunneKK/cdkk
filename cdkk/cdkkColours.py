@@ -1,3 +1,59 @@
+# To Do: Add support for CSS styles
+# To Do: Add support for style dictionary - set style based on key - global dictionary?
+
+from cdkk.cdkkUtils import *
+
+class Style(dict):
+    # Key = Style attribute
+    # Value = Style value
+
+    def get_rgb(self, attribute, default=None):
+        val = self.get(attribute, default)
+        if val is None:
+            return None
+        else:
+            if val in colours:
+                return colours[val]
+            else:
+                return None
+
+class Stylesheet(dict):
+    # Key = Style name
+    # Value = Style (class)
+
+    def style(self, style_name):
+        return self.get(style_name, None)
+
+    def style_attr(self, style_name, attribute):
+        style_dict = self.style(style_name)
+        if style_dict is None:
+            return None
+        else:
+            return style_dict.get(attribute)
+
+    def add_style(self, style_name, *styles):
+        self[style_name] = merge_dicts(*styles)
+
+    def update_style(self, style_name, *styles):
+        self[style_name] = merge_dicts(self.style(style_name), *styles)
+
+    def add_merged_style(self, new_style_name, *style_names):
+        # Note: If the "new" style is an existing style name, it will be updated
+        new_style = {}
+        for name in style_names:
+            new_style = merge_dicts(new_style, self.style(name))
+        self[new_style_name] = new_style
+
+    def add_stylesheet(self, stylesheet):
+        for name, style in stylesheet.items():
+            self.add_style(name, style)
+
+# Create global stylesheet
+stylesheet = Stylesheet()
+
+
+# --------------------------------------------------
+
 # https://www.webucator.com/blog/2015/03/python-color-constants-module/
 
 """Provide RGB color constants and a colours dictionary with

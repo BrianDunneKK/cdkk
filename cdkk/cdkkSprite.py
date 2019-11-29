@@ -1,9 +1,6 @@
+# To Do: Add default dtyle to app_config
 # To Do: msecs_per_image not implemented
 # To Do: Change find_collisions to use SpriteGroup.collide()
-# To Do: Change remove_by_class() to find_sprites_by_desc()
-# To Do: Remove SpriteSet.draw_shapes()
-# To Do: Merge SpriteSet into SpriteGroup
-# To Do: Move style to own class and add support for CSS
 
 import pygame
 import pygame.gfxdraw
@@ -12,6 +9,16 @@ from math import sin, cos
 from cdkk.cdkkUtils import *
 from cdkk.cdkkColours import *
 
+sprite_styles = {
+    "Shape": {"fillcolour": "white", "outlinecolour": "black", "outlinewidth": 3,
+              "altcolour": "black", "highlightcolour": "yellow", "shape": "Rectangle",
+              "width": None, "height": None, "invisible": False},
+    "Invisible": {"fillcolour": None, "outlinecolour": None, "textsize": 36},
+    "TextBox": {"textcolour": "black", "textsize": 36, "align_horiz": "C", "align_vert": "M", "textformat": "{0}"}
+}
+stylesheet.add_stylesheet(sprite_styles)
+
+# stylesheet.style("Shape")
 
 class Sprite(pygame.sprite.Sprite):
     DRAW_AS_REQD = 0
@@ -22,14 +29,15 @@ class Sprite(pygame.sprite.Sprite):
         super().__init__()
         self._desc = {}
         self.set_desc("name", name)
-        self.set_desc("uuid", uuid.uuid4())
+        self.set_desc("class", self.__class__.__name__)
+        self.set_desc("uuid", uuid.uuid4())        
         self.rect = MovingRect()
         self._image = cdkkImage()
         self.event_on_click = None
         self.event_on_unclick = None
         self._draw_reqd = False
         self._game_active = None
-        self._style = {}
+        self._style = Style()
         self.update_style(style)
 
     def get_desc(self, attribute, no_value=None):
@@ -45,14 +53,7 @@ class Sprite(pygame.sprite.Sprite):
         return self._style.get(attribute, default)
 
     def get_style_colour(self, attribute, default=None):
-        val = self.get_style(attribute, default)
-        if val is None:
-            return None
-        else:
-            if val in colours:
-                return colours[val]
-            else:
-                return None
+        return self._style.get_rgb(attribute, default)
 
     def set_style(self, attribute, new_value):
         self._style[attribute] = new_value
@@ -186,7 +187,7 @@ class Sprite(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
     def collide(self, sprite_group, collided=pygame.sprite.collide_mask):
-        group2 = SpriteGroup()
+        group2 = SpriteGroup("temp")
         for s in sprite_group:
             if s.image is not None:
                 group2.add(s)
@@ -295,17 +296,8 @@ class Sprite_Animation(Sprite):
 
 
 class Sprite_Shape(Sprite):
-    default_style = {
-        "fillcolour": "white", "outlinecolour": "black", "outlinewidth": 3,
-        "altcolour": "black", "highlightcolour": "yellow", "shape": "Rectangle",
-        "width": None, "height": None, "invisible": False}
-    invisible_style = {
-        "fillcolour": None, "outlinecolour": None, "outlinewidth": 0,
-        "altcolour": None, "highlightcolour": None, "shape": "Rectangle",
-        "width": None, "height": None, "invisible": True}
-
     def __init__(self, name="", rect=None, style=None):
-        super().__init__(name, style=merge_dicts(Sprite_Shape.default_style, style))
+        super().__init__(name, style=merge_dicts(stylesheet.style("Shape"), style))
         self._pointlist = None
         self._pie_angles = None
         if rect is not None:
@@ -403,12 +395,9 @@ class Sprite_Shape(Sprite):
 
 
 class Sprite_TextBox(Sprite_Shape):
-    default_style = {"textcolour": "black", "textsize": 36,
-                     "align_horiz": "C", "align_vert": "M", "textformat": "{0}"}
-
     def __init__(self, name_text="", rect=None, style=None, auto_size=False, name_is_text=True):
         super().__init__(name_text, rect, style=merge_dicts(
-            Sprite_TextBox.default_style, style))
+            stylesheet.style("TextBox"), style))
         if name_is_text:
             self._text = name_text
         else:
@@ -497,17 +486,32 @@ class Sprite_TextBox(Sprite_Shape):
 
 # --------------------------------------------------
 
+class SpriteGroup(pygame.sprite.LayeredUpdates):
+    def collide(self, sprite_group, dokilla=False, dokillb=False, collided=pygame.sprite.collide_mask):
+        coll_dict = pygame.sprite.groupcollide(
+            self, sprite_group, dokilla, dokillb, collided)
+        return coll_dict
 
-class SpriteSet(pygame.sprite.LayeredUpdates):
-    def __init__(self, name, rect):
-        super().__init__()
-        self.name = name
-        self.set_rect = rect
+    def __init__(self, name, *sprites, **kwargs):
+        super().__init__(*sprites, **kwargs)
+        self._desc = {}
+        self.set_desc("name", name)
+        self.rect = None
 
-    def add_shape(self, sprite, relative_pos=False):
-        super().add(sprite)
+    def get_desc(self, attribute, no_value=None):
+        if attribute in self._desc:
+            return self._desc[attribute]
+        else:
+            return no_value
 
-    def draw_shapes(self, image):
+    def set_desc(self, attribute, value):
+        self._desc[attribute] = value
+
+    @property
+    def name(self):
+        return self.get_desc("name")
+
+    def draw_sprites(self, image):
         for s in self.sprites():
             s.image = image
             s.draw()
@@ -515,23 +519,23 @@ class SpriteSet(pygame.sprite.LayeredUpdates):
 # --------------------------------------------------
 
 
-class SpriteGridSet(SpriteSet):
+class SpriteGridSet(SpriteGroup):
     def __init__(self, name, rect, xcols, yrows, margin=0):
-        super().__init__(name, rect)
+        super().__init__(name)
+        self.rect = rect
         self.xcols = xcols
         self.yrows = yrows
         self.margin = margin
 
-    def add_shape_xy(self, sprite, x, y, relative_pos=False):
-        w = (self.set_rect.width - (self.xcols-1)*self.margin) / self.xcols
-        h = (self.set_rect.height - (self.yrows-1)*self.margin) / self.yrows
-        l = self.set_rect.left + (self.set_rect.width*x)/self.xcols
-        t = self.set_rect.top + (self.set_rect.height*y)/self.yrows
-        new_rect = cdkkRect(l, t, w, h)
-        sprite.rect = new_rect
+    def add_shape_xy(self, sprite, x, y):
+        w = (self.rect.width - (self.xcols-1)*self.margin) / self.xcols
+        h = (self.rect.height - (self.yrows-1)*self.margin) / self.yrows
+        l = self.rect.left + (self.rect.width*x)/self.xcols
+        t = self.rect.top + (self.rect.height*y)/self.yrows
+        sprite.rect = cdkkRect(l, t, w, h)
         sprite.set_desc("xcol", x)
         sprite.set_desc("yrow", y)
-        super().add_shape(sprite, relative_pos)
+        self.add(sprite)
 
     def find_shape_xy(self, x, y):
         ret_sprite = None
@@ -627,9 +631,11 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
                 s.kill()
         return found
 
-    def kill_sprites(self, sprite_list):
-        for s in sprite_list:
+    def kill_sprites_by_desc(self, attr1, value1, attr2=None, value2=None):
+        sprites = self.find_sprites_by_desc(attr1, value1, attr2, value2)
+        for s in sprites:
             s.kill()
+        return len(sprites)
 
     def find_collisions(self):
         sprite_dict = pygame.sprite.groupcollide(self, self, False, False)
@@ -664,11 +670,6 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
                     EventManager.post(ev)
         return sprite_str
 
-    def remove_by_class(self, sprite_class):
-        for p in self.sprites():
-            if type(p).__name__ == sprite_class:
-                self.remove(p)
-
     def event(self, e):
         dealt_with = False
         if e.type == EVENT_GAME_CONTROL:
@@ -697,43 +698,5 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
         for s in self.sprites():
             s.end_game()
         self._game_active = False
-
-
-# --------------------------------------------------
-
-class SpriteGroup(pygame.sprite.Group):
-    def collide(self, sprite_group, dokilla=False, dokillb=False, collided=pygame.sprite.collide_mask):
-        coll_dict = pygame.sprite.groupcollide(
-            self, sprite_group, dokilla, dokillb, collided)
-        return coll_dict
-
-# --------------------------------------------------
-
-
-class SpriteManager_SplashScreen(SpriteManager):
-    def __init__(self, limits, display_time, filename):
-        super().__init__("Splash Screen Manager")
-        splash = Sprite(name="Splash Screen")
-        splash.load_image_from_file(filename)
-        splash.rect.center = limits.center
-        self.add(splash)
-        self._splash_displayed = True
-        self._clear_timer = Timer(display_time, EVENT_GAME_FLOW)
-
-    def clear_splash(self):
-        self.empty()
-        self._splash_displayed = False
-
-    def start_game(self):
-        super().start_game()
-        self.clear_splash()
-
-    def event(self, e):
-        dealt_with = super().event(e)
-        if not dealt_with and e.type == EVENT_GAME_FLOW:
-            if self._splash_displayed:
-                self.clear_splash()
-                dealt_with = True
-        return dealt_with
 
 # --------------------------------------------------
