@@ -36,9 +36,8 @@ class Manager_TestSprite(cdkk.SpriteManager):
         self.add(polygon_sprite)
 
         image_from_ss = cdkk.Sprite()
-        image_from_ss._image.set_spritesheet("ExplosionCount.png", 4, 4)
-        image_from_ss._image.spritesheet_image(6)
-        image_from_ss._image_size_to_rect()
+        image_from_ss.cdkkimage.set_spritesheet("ExplosionCount.png", 4, 4)
+        image_from_ss.cdkkimage.spritesheet_image(6)
         image_from_ss.rect.topleft = (650, 10)
         self.add(image_from_ss)
 

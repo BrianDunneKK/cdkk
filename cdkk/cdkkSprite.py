@@ -1,6 +1,10 @@
-# To Do: Add default dtyle to app_config
+# To Do: Add default style to app_config
+# To Do: Chnage "GameOver" to "EndGame"
 # To Do: msecs_per_image not implemented
 # To Do: Change find_collisions to use SpriteGroup.collide()
+# To Do: Delete Sprite_DynamicText
+# To Do: Modify _load_image_from_file to use cdkkImage. Delete?
+# To Do: Delete load_animation???
 
 import pygame
 import pygame.gfxdraw
@@ -25,12 +29,12 @@ class Sprite(pygame.sprite.Sprite):
     DRAW_ALWAYS = 1
     DRAW_AFTER_CLEAR = 2
 
-    def __init__(self, name="", style=None):
+    def __init__(self, name="", style=None, filename=None):
         super().__init__()
         self._desc = {}
-        self.set_desc("name", name)
-        self.set_desc("class", self.__class__.__name__)
-        self.set_desc("uuid", uuid.uuid4())        
+        self.set_config("name", name)
+        self.set_config("class", self.__class__.__name__)
+        self.set_config("uuid", uuid.uuid4())        
         self.rect = MovingRect()
         self._image = cdkkImage()
         self.event_on_click = None
@@ -39,14 +43,15 @@ class Sprite(pygame.sprite.Sprite):
         self._game_active = None
         self._style = Style()
         self.update_style(style)
+        self.load_image_from_file(filename)
 
-    def get_desc(self, attribute, no_value=None):
+    def get_config(self, attribute, no_value=None):
         if attribute in self._desc:
             return self._desc[attribute]
         else:
             return no_value
 
-    def set_desc(self, attribute, value):
+    def set_config(self, attribute, value):
         self._desc[attribute] = value
 
     def get_style(self, attribute, default=None):
@@ -83,11 +88,11 @@ class Sprite(pygame.sprite.Sprite):
 
     @property
     def name(self):
-        return self.get_desc("name")
+        return self.get_config("name")
 
     @property
     def uuid(self):
-        return self.get_desc("uuid")
+        return self.get_config("uuid")
 
     @property
     def game_is_active(self):
@@ -105,6 +110,10 @@ class Sprite(pygame.sprite.Sprite):
     def _image_size_to_rect(self):
         self.rect.width = self.image.get_rect().width
         self.rect.height = self.image.get_rect().height
+
+    @property
+    def cdkkimage(self):
+        return self._image
 
     def _load_image_from_file(self, filename, crop=None, scale_to=None):
         img = cdkkImage()
@@ -126,7 +135,10 @@ class Sprite(pygame.sprite.Sprite):
     def load_image(self):
         pass
 
-    def load_image_from_file(self, filename, crop=None, scale_to=None, create_mask=True):
+    def load_image_from_file(self, filename, img_process=None, crop=None, scale_to=None, create_mask=True):
+        if filename is None:
+            return
+
         if scale_to == "style":
             w = self.get_style("width")
             h = self.get_style("height")
@@ -134,15 +146,13 @@ class Sprite(pygame.sprite.Sprite):
                 scale_to = None
             else:
                 scale_to = (w, h)
-        self._image.load(filename, crop, scale_to)
+            
+        self._image.load(filename, img_process=img_process, crop=crop, scale_to=scale_to)
         self._image_size_to_rect()
         if create_mask:
             self.create_mask()
 
-    def load_image_from_spritesheet(self, spritesheet_filename, cols, rows, sprite_number, scale_to=None, create_mask=True):
-        img = cdkkImage()
-        img.set_spritesheet(spritesheet_filename, cols, rows)
-
+    def load_image_from_spritesheet(self, spritesheet_filename, cols, rows, sprite_number, img_process=None, crop=None, scale_to=None, create_mask=True):
         if scale_to == "style":
             w = self.get_style("width")
             h = self.get_style("height")
@@ -151,7 +161,9 @@ class Sprite(pygame.sprite.Sprite):
             else:
                 scale_to = (w, h)
 
-        self.image = img.spritesheet_image(sprite_number, scale_to)
+        img = cdkkImage()
+        img.set_spritesheet(spritesheet_filename, cols, rows, img_process, crop=crop, scale_to=scale_to)
+        self.image = img.spritesheet_image(sprite_number)
         self._image_size_to_rect()
         if create_mask:
             self.create_mask()
@@ -169,6 +181,9 @@ class Sprite(pygame.sprite.Sprite):
 
     def add_image(self, image, dest=(0, 0)):
         return self.image.blit(image, dest)
+
+    def process_image(self, commands_values, **kwargs):
+        self._image.process_list(commands_values, **kwargs)
 
     def setup_mouse_events(self, event_on_click, event_on_unclick=None):
         if type(event_on_click).__name__ == "Event" or event_on_click == None:
@@ -201,6 +216,11 @@ class Sprite(pygame.sprite.Sprite):
         if clear_draw_reqd:
             self._draw_reqd = False
 
+    def update(self):
+        super().update()
+        if self.get_config("auto_move_physics", False):
+            self.rect.move_physics()
+
     def slow_update(self):
         pass
 
@@ -232,7 +252,7 @@ class Sprite_Animation(Sprite):
         if create_mask:
             self.create_mask()
 
-    def load_spritesheet(self, set_name, spritesheet_filename, cols, rows, create_mask=True, set_anim=False, start=None, end=None, length=None):
+    def load_spritesheet(self, set_name, spritesheet_filename, cols, rows, create_mask=True, set_anim=False, start=None, end=None, length=None, img_process=None):
         self._animations[set_name] = []
         if start is None:
             start = 0
@@ -243,7 +263,7 @@ class Sprite_Animation(Sprite):
                 end = start + length
 
         spritesheet = cdkkImage()
-        spritesheet.set_spritesheet(spritesheet_filename, cols, rows)
+        spritesheet.set_spritesheet(spritesheet_filename, cols, rows, img_process=img_process)
         for i in range(start, end):
             self._animations[set_name].append(spritesheet.spritesheet_image(i))
 
@@ -495,21 +515,21 @@ class SpriteGroup(pygame.sprite.LayeredUpdates):
     def __init__(self, name, *sprites, **kwargs):
         super().__init__(*sprites, **kwargs)
         self._desc = {}
-        self.set_desc("name", name)
+        self.set_config("name", name)
         self.rect = None
 
-    def get_desc(self, attribute, no_value=None):
+    def get_config(self, attribute, no_value=None):
         if attribute in self._desc:
             return self._desc[attribute]
         else:
             return no_value
 
-    def set_desc(self, attribute, value):
+    def set_config(self, attribute, value):
         self._desc[attribute] = value
 
     @property
     def name(self):
-        return self.get_desc("name")
+        return self.get_config("name")
 
     def draw_sprites(self, image):
         for s in self.sprites():
@@ -533,14 +553,14 @@ class SpriteGridSet(SpriteGroup):
         l = self.rect.left + (self.rect.width*x)/self.xcols
         t = self.rect.top + (self.rect.height*y)/self.yrows
         sprite.rect = cdkkRect(l, t, w, h)
-        sprite.set_desc("xcol", x)
-        sprite.set_desc("yrow", y)
+        sprite.set_config("xcol", x)
+        sprite.set_config("yrow", y)
         self.add(sprite)
 
     def find_shape_xy(self, x, y):
         ret_sprite = None
         for s in self.sprites():
-            if s.get_desc("xcol") == x and s.get_desc("yrow") == y:
+            if s.get_config("xcol") == x and s.get_config("yrow") == y:
                 ret_sprite = s
         return ret_sprite
 
@@ -605,9 +625,9 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
     def find_sprites_by_desc(self, attr1, value1, attr2=None, value2=None):
         ret_sprites = []
         for s in self.sprites():
-            found = (s.get_desc(attr1) == value1)
+            found = (s.get_config(attr1) == value1)
             if found and attr2 is not None and value2 is not None:
-                found = (s.get_desc(attr2) == value2)
+                found = (s.get_config(attr2) == value2)
             if found:
                 ret_sprites.append(s)
         return ret_sprites

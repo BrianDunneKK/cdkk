@@ -16,10 +16,7 @@ class Sprite_Ball(cdkk.Sprite_Shape):
         for l in limits:
             self.rect.add_limit(l)
         self.rect.go()
-
-    def update(self):
-        super().update()
-        self.rect.move_physics()
+        self.set_config("auto_move_physics", True)
 
 # --------------------------------------------------
 

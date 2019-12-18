@@ -1,12 +1,14 @@
 import pygame
 import cdkk
+import random
 
 app_styles = {
-    "Ninja": {"fillcolour":"yellow", "shape":"Ellipse", "width":80, "height":60}
+    "Ninja": {"fillcolour": "yellow", "shape": "Ellipse", "width": 80, "height": 60}
 }
 cdkk.stylesheet.add_stylesheet(app_styles)
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class Sprite_Ninja(cdkk.Sprite_TextBox):
     def __init__(self, posx, posy):
@@ -32,7 +34,7 @@ class Sprite_Ninja(cdkk.Sprite_TextBox):
         # Draw is called for the sprite during every game loop
 
 
-### --------------------------------------------------
+# --------------------------------------------------
 
 class Manager_Ninja(cdkk.SpriteManager):
     def __init__(self, limits):
@@ -66,7 +68,7 @@ class Manager_Ninja(cdkk.SpriteManager):
     def update(self):
         super().update()
         # Update is called for the sprite during every game loop
-        # For moving objects, call self.rect.move_physics()
+        # For moving objects, call self.rect.move_physics() or use self.set_config("auto_move_physics", True)
 
     def start_game(self):
         super().start_game()
@@ -78,20 +80,23 @@ class Manager_Ninja(cdkk.SpriteManager):
         # Typically this is where sprites are removed
         super().end_game()
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class Manager_Scoreboard(cdkk.SpriteManager):
     def __init__(self, game_time, limits):
         super().__init__("Scoreboard Manager")
-        score_style = {"fillcolour":None, "align_horiz":"L"}
+        score_style = {"fillcolour": None, "align_horiz": "L"}
 
         self._game_time = game_time
         self._timer = None
-        self._time_left = cdkk.Sprite_DynamicText("Time Left", cdkk.cdkkRect(10, 10, 200, 40), score_style)
+        self._time_left = cdkk.Sprite_DynamicText(
+            "Time Left", cdkk.cdkkRect(10, 10, 200, 40), score_style)
         self._time_left.set_text_format("Time Left: {0:0.1f}", 0)
         self.add(self._time_left)
 
-        self._fps = cdkk.Sprite_DynamicText("FPS", cdkk.cdkkRect(10, 60, 200, 40), score_style)
+        self._fps = cdkk.Sprite_DynamicText(
+            "FPS", cdkk.cdkkRect(10, 60, 200, 40), score_style)
         self._fps.set_text_format("FPS: {0:4.1f}", 0)
         self.add(self._fps)
 
@@ -104,17 +109,19 @@ class Manager_Scoreboard(cdkk.SpriteManager):
         # This is called around 3 times per sec and is for updates that don't need to happen every game loop
         if self.game_is_active:
             self._time_left.set_text(self._timer.time_left)
-            
+
     def start_game(self):
         super().start_game()
-        self._timer = cdkk.Timer(self._game_time, cdkk.EVENT_GAME_TIMER_1, auto_start=True)
+        self._timer = cdkk.Timer(
+            self._game_time, cdkk.EVENT_GAME_TIMER_1, auto_start=True)
         self.remove(self._game_over)
 
     def end_game(self):
         self.add(self._game_over)
         super().end_game()
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 class MyGame(cdkk.PyGameApp):
     def init(self):
@@ -127,28 +134,31 @@ class MyGame(cdkk.PyGameApp):
         self.add_sprite_mgr(self.scoreboard_mgr)
 
         key_map = {
-            pygame.K_q : "Quit",
-            pygame.K_s : "StartGame",
-            pygame.K_n : "NewNinja",
-            pygame.K_c : "ClearNinjas"
+            pygame.K_q: "Quit",
+            pygame.K_s: "StartGame",
+            pygame.K_n: "NewNinja",
+            pygame.K_e: "GameOver",
+            pygame.K_c: "ClearNinjas"
         }
         user_event_map = {
-            cdkk.EVENT_GAME_TIMER_1 : "GameOver"
+            cdkk.EVENT_GAME_TIMER_1: "GameOver"
         }
-        self.event_mgr.event_map(key_event_map=key_map, user_event_map=user_event_map)
+        self.event_mgr.event_map(
+            key_event_map=key_map, user_event_map=user_event_map)
 
     def update(self):
         super().update()
         self.scoreboard_mgr.set_fps(theApp.loops_per_sec)
         # Manage interaction between Sprites in different SpriteManagers
 
-### --------------------------------------------------
+# --------------------------------------------------
+
 
 app_config = {
-    "width":1200, "height":800,
-    "background_fill":"burlywood",
-    "caption":"My Game",
-    "auto_start":False
-    }
+    "width": 1200, "height": 800,
+    "background_fill": "burlywood",
+    "caption": "My Game",
+    "auto_start": False
+}
 theApp = MyGame(app_config)
 theApp.execute()

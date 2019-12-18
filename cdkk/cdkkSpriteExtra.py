@@ -13,8 +13,14 @@ sprite_extra_styles = {
 }
 stylesheet.add_stylesheet(sprite_extra_styles)
 
-# stylesheet.style("ImageGrid")
 
+### --------------------------------------------------
+
+class Sprite_Background(Sprite):
+    def __init__(self, filename, rect, name=""):
+        super().__init__(name)
+        self.load_image_from_file(filename, scale_to=rect.size)
+        self.rect.topleft = (0, 0)
 
 ### --------------------------------------------------
 
@@ -226,10 +232,10 @@ class Sprite_ImageGrid(Sprite_Grid):
 
     def setup_image_grid(self, spritesheet, sprites):
         img = cdkkImage()
-        img.set_spritesheet(spritesheet[0], spritesheet[1], spritesheet[2])
+        img.set_spritesheet(spritesheet[0], spritesheet[1], spritesheet[2], scale_to=self.cell_size)
         for i in range(0, self.rows):
             for j in range (0, self.cols):
-                img.spritesheet_image(sprites[i*self.cols+j], scale_to=self.cell_size)
+                img.spritesheet_image(sprites[i*self.cols+j])
                 r = self.cell_rect(j, i, True)
                 self.image.blit(img.surface, r)
 

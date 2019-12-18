@@ -12,10 +12,7 @@ class Sprite_Ball(cdkk.Sprite_Shape):
         super().__init__(name="Ball", rect=cdkk.cdkkRect(
             posx, posy, 50, 50), style={"fillcolour": "red3", "outlinecolour": None, "shape": "Ellipse"})
         self.rect.go()
-
-    def update(self):
-        super().update()
-        self.rect.move_physics()
+        self.set_config("auto_move_physics", True)
 
 # --------------------------------------------------
 

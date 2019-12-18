@@ -1,3 +1,4 @@
+# To Do: Add img_process options: relative & absolute
 # To Do: Implement bounce_cor per limit, for x & y
 
 import pygame
@@ -73,7 +74,7 @@ AT_LIMIT_Y_MOVE_TO_Y = 256         # At Y limit, move to Y
 AT_LIMIT_MOVE_TO_XY = 128+256      # At X/Y limit, move to X/Y
 AT_LIMIT_X_DO_NOTHING = 512        # At X limit, do nothing
 AT_LIMIT_Y_DO_NOTHING = 1024       # At Y limit, do nothing
-AT_LIMIT_XY_DO_NOTHING = 512+1024  # At Y limit, do nothing
+AT_LIMIT_XY_DO_NOTHING = 512+1024  # At X & Y limit, do nothing
 # At X/Y limit, hold X&Y positions and clear X & Y velocities
 AT_LIMIT_STOP = 2048
 
@@ -734,6 +735,7 @@ class Timer():
     def stop(self):
         self._stop_time = pygame.time.get_ticks()
         self._running = False
+        self.stop_event()
         return (self._stop_time - self._start_time)/1000.0
 
     def stop_event(self):
@@ -1124,11 +1126,14 @@ class cdkkImage:
     def __init__(self):
         super().__init__()
         self._surface = None
+        self._surface_copy = None
+        self._info_copy = None
         self._spritesheet = None
         self._ss_cols = 0
         self._ss_rows = 0
         self._ss_cell_width = 0
         self._ss_cell_height = 0
+        self._ss_img_process = None
 
     @property
     def surface(self):
@@ -1144,26 +1149,25 @@ class cdkkImage:
         else:
             return os.path.join(self.imagePath, filename)
 
-    def load(self, filename, crop=None, scale_to=None):
+    def create_copy(self, do_copy=True, info=None):
+        if do_copy:
+            self._surface_copy = self._surface.copy()
+            self._info_copy = info
+
+    def restore_copy(self, do_restore=True):
+        if do_restore and self._surface_copy is not None:
+            self._surface = self._surface_copy.copy()
+        return self._info_copy
+
+    def load(self, filename, img_process=None, crop=None, scale_to=None, set_copy=False):
         self.surface = image = pygame.image.load(
             self.image_path(filename)).convert_alpha()
 
-        if crop is not None:
-            # Crop the imported image by ... crop[left, right, top, bottom]
-            crop_rect = image.get_rect()
-            crop_rect.width = crop_rect.width - crop[0] - crop[1]
-            crop_rect.left = crop[0]
-            crop_rect.height = crop_rect.height - crop[2] - crop[3]
-            crop_rect.top = crop[2]
-            self.surface = pygame.Surface(crop_rect.size, pygame.SRCALPHA)
-            self.surface.blit(image, (0, 0), crop_rect)
-
-        if scale_to is not None:
-            self.surface = pygame.transform.smoothscale(self.surface, scale_to)
-
+        self.process_list(img_process, crop=crop, scale=scale_to)
+        self.create_copy(set_copy)
         return self.surface
 
-    def set_spritesheet(self, filename, cols, rows):
+    def set_spritesheet(self, filename, cols, rows, img_process=None, crop=None, scale_to=None):
         self._spritesheet = pygame.image.load(
             self.image_path(filename)).convert_alpha()
         self._ss_cols = cols
@@ -1172,17 +1176,125 @@ class cdkkImage:
         ss_height = self._spritesheet.get_rect().height
         self._ss_cell_width = ss_width // cols
         self._ss_cell_height = ss_height // rows
+        self._ss_img_process = (img_process, crop, scale_to)
 
-    def spritesheet_image(self, sprite_number, scale_to=None):
+    def spritesheet_image(self, sprite_number):
         x = self._ss_cell_width * (sprite_number % self._ss_cols)
         y = self._ss_cell_height * (sprite_number // self._ss_cols)
         rect = cdkkRect(x, y, self._ss_cell_width, self._ss_cell_height)
         self.surface = self._spritesheet.subsurface(rect)
-
-        if scale_to is not None:
-            self.surface = pygame.transform.smoothscale(self.surface, scale_to)
-
+        self.process_list(self._ss_img_process[0], crop=self._ss_img_process[1], scale=self._ss_img_process[2])
         return self.surface
+
+    def process(self, command, value):
+        if command is None:
+            return False
+        
+        if command == "crop" and value is not None:
+            # Crop the image by ... value[left, right, top, bottom]
+            crop_rect = self.surface.get_rect()
+            crop_rect.width = crop_rect.width - value[0] - value[1]
+            crop_rect.left = value[0]
+            crop_rect.height = crop_rect.height - value[2] - value[3]
+            crop_rect.top = value[2]
+            curr_image = self.surface.copy()
+            self.surface = pygame.Surface(crop_rect.size, pygame.SRCALPHA)
+            self.surface.blit(curr_image, (0, 0), crop_rect)
+
+        elif command == "scale" and value is not None:
+            self.surface = pygame.transform.smoothscale(self.surface, value)
+
+        elif command == "stretch" and value is not None:
+            # Stretch the image by ... value[left, right, top, bottom]
+            self.stretch_horiz(value[0], value[1])
+            self.stretch_vert(value[2], value[3])
+
+        elif command == "flip" and value is not None:
+            flipx, flipy = value
+            self.surface = pygame.transform.flip(self.surface, flipx, flipy)
+
+        elif command == "rotate" and value is not None:
+            if isinstance(value, tuple):
+                do_crop = value[1] if len(value)>1 else True
+                do_restore = value[2] if len(value)>2 else True
+                value = value[0]
+            else:
+                do_crop = True
+                do_restore = True
+
+            self.restore_copy(do_restore)
+            size = self.surface.get_rect().size
+            self.surface = pygame.transform.rotate(self.surface, value)
+
+            if do_crop:
+                rot_size = self.surface.get_rect().size
+                crop_x = int((rot_size[0] - size[0])/2)
+                crop_y = int((rot_size[1] - size[1])/2)
+                self.process("crop", [crop_x, crop_x, crop_y, crop_y])
+
+            # Note:
+            # Without do_crop, the size of the sprite surface will grow to
+            # accommodate the rotated image. To maintain the same sprite size
+            # and to rotate around the centre of the image:
+            #   sprite.rect.size = size (return value from this function)
+            #   sprite.rect.center = center (store sprite centre before rotating)
+
+        return self.surface.get_rect().size
+
+    def process_list(self, commands_values, **kwargs):
+        cv_list = []
+        for c, v in kwargs.items():
+            cv_list.append((c,v))
+        if commands_values is not None:
+            if isinstance(commands_values, list):
+                cv_list.extend(commands_values)
+            else:
+                cv_list.append(commands_values)
+
+        for cv in cv_list:
+            self.process(cv[0], cv[1])
+
+    def stretch_horiz(self, stretch_left, stretch_right):
+        stretch_rect = self.surface.get_rect()
+        stretch_rect.width = stretch_rect.width + stretch_left + stretch_right
+        curr_image = self.surface.copy()
+        self.surface = pygame.Surface(stretch_rect.size, pygame.SRCALPHA)
+
+        slice_rect = curr_image.get_rect()
+        slice_rect.width = 1
+        surf_lt = pygame.Surface(slice_rect.size, pygame.SRCALPHA)
+        surf_lt.blit(curr_image, (0, 0), slice_rect)
+        surf_lt = pygame.transform.smoothscale(surf_lt, (stretch_left, slice_rect.height))
+
+        slice_rect.left = curr_image.get_rect().width - 1
+        surf_rt = pygame.Surface(slice_rect.size, pygame.SRCALPHA)
+        surf_rt.blit(curr_image, (0, 0), slice_rect)
+        surf_rt = pygame.transform.smoothscale(surf_rt, (stretch_right, slice_rect.height))
+
+        self.surface.blit(surf_lt, (0,0))
+        self.surface.blit(curr_image, (stretch_left,0))
+        self.surface.blit(surf_rt, (stretch_left+curr_image.get_rect().width,0))
+
+    def stretch_vert(self, streth_up, streth_down):
+        stretch_rect = self.surface.get_rect()
+        stretch_rect.height = stretch_rect.height + streth_up + streth_down
+        curr_image = self.surface.copy()
+        self.surface = pygame.Surface(stretch_rect.size, pygame.SRCALPHA)
+
+        slice_rect = curr_image.get_rect()
+        slice_rect.height = 1
+        surf_up = pygame.Surface(slice_rect.size, pygame.SRCALPHA)
+        surf_up.blit(curr_image, (0, 0), slice_rect)
+        surf_up = pygame.transform.smoothscale(surf_up, (slice_rect.width, streth_up))
+
+        slice_rect.top = curr_image.get_rect().height - 1
+        surf_dn = pygame.Surface(slice_rect.size, pygame.SRCALPHA)
+        surf_dn.blit(curr_image, (0, 0), slice_rect)
+        surf_dn = pygame.transform.smoothscale(surf_dn, (slice_rect.width, streth_down))
+
+        self.surface.blit(surf_up, (0,0))
+        self.surface.blit(curr_image, (0,streth_up))
+        self.surface.blit(surf_dn, (0,streth_up+curr_image.get_rect().height))
 
 # --------------------------------------------------
 
