@@ -4,6 +4,7 @@ from cdkk.cdkkUtils import *
 
 
 class cdkkApp:
+    _cdkkApp = None
     default_config = {
         "auto_start": True       # Automatically start game
     }
@@ -13,6 +14,7 @@ class cdkkApp:
         self._game_status = 0
         self._config = {}
         self.update_config(merge_dicts(cdkkApp.default_config, app_config))
+        cdkkApp._cdkkApp = self
 
     @property
     def game_in_progress(self):

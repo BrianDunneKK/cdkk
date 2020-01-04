@@ -5,6 +5,7 @@
 # To Do: Delete Sprite_DynamicText
 # To Do: Modify _load_image_from_file to use cdkkImage. Delete?
 # To Do: Delete load_animation???
+# To Do: Move SpriteManager to cdkkSpriteManager
 
 import pygame
 import pygame.gfxdraw
@@ -16,7 +17,7 @@ from cdkk.cdkkColours import *
 sprite_styles = {
     "Shape": {"fillcolour": "white", "outlinecolour": "black", "outlinewidth": 3,
               "altcolour": "black", "highlightcolour": "yellow", "shape": "Rectangle",
-              "width": None, "height": None, "invisible": False},
+              "xpos": None, "ypos": None, "width": None, "height": None, "invisible": False},
     "Invisible": {"fillcolour": None, "outlinecolour": None, "textsize": 36},
     "TextBox": {"textcolour": "black", "textsize": 36, "align_horiz": "C", "align_vert": "M", "textformat": "{0}"}
 }
@@ -63,21 +64,27 @@ class Sprite(pygame.sprite.Sprite):
     def set_style(self, attribute, new_value):
         self._style[attribute] = new_value
         self._draw_reqd = True
-        if attribute == "width" or attribute == "height":
-            self.style_to_size()
+        if attribute in ("xpos", "ypos", "width", "height"):
+            self.style_to_pos_size()
 
     def update_style(self, *updated_styles):
         for s in updated_styles:
             if s is not None:
                 self._style.update(s)
                 for key in s:
-                    if key == "width" or key == "height":
-                        self.style_to_size()
+                    if key in ("xpos", "ypos", "width", "height"):
+                        self.style_to_pos_size()
         self._draw_reqd = True
 
-    def style_to_size(self):
+    def style_to_pos_size(self):
+        x = self.get_style("xpos")
+        y = self.get_style("ypos")
         w = self.get_style("width")
         h = self.get_style("height")
+        if x is not None:
+            self.rect.left = x
+        if y is not None:
+            self.rect.top = y
         if w is not None:
             self.rect.width = w
         if h is not None:
@@ -428,6 +435,7 @@ class Sprite_TextBox(Sprite_Shape):
             if rect.width > 0 and rect.height > 0:
                 self._auto_size = False
         self._draw_reqd = True
+        self.style_to_pos_size()
 
     @property
     def text(self):
@@ -563,160 +571,5 @@ class SpriteGridSet(SpriteGroup):
             if s.get_config("xcol") == x and s.get_config("yrow") == y:
                 ret_sprite = s
         return ret_sprite
-
-# --------------------------------------------------
-
-
-class SpriteManager(pygame.sprite.LayeredUpdates):
-    def __init__(self, name, **sm_config):
-        super().__init__()
-        self.name = name
-        self._game_active = False
-
-        self._sm_config = {}
-        for key, value in sm_config.items():
-            self.set_config(key, value)
-
-        if self.get_config("control_type") is None:
-            self.set_config("control_type", CONTROL_KEYBOARD+CONTROL_MOUSE)
-
-    @property
-    def game_is_active(self):
-        return self._game_active
-
-    @property
-    def player(self):
-        player = self.get_config("player")
-        if player is not None:
-            return player
-        else:
-            return self.get_config("Player")
-
-    @property
-    def use_keyboard(self):
-        return ((self.get_config("control_type") & CONTROL_KEYBOARD) > 0)
-
-    @property
-    def use_mouse(self):
-        return ((self.get_config("control_type") & CONTROL_MOUSE) > 0)
-
-    @property
-    def use_joystick(self):
-        return ((self.get_config("control_type") & CONTROL_JOYSTICK) > 0)
-
-    def get_config(self, attribute, default=None):
-        return self._sm_config.get(attribute, default)
-
-    def set_config(self, attribute, value):
-        self._sm_config[attribute] = value
-
-    def draw(self, surface):
-        for s in self.sprites():
-            s.draw()  # Ask each sprite to draw its image attribute and update rect
-        super().draw(surface)
-
-    def sprite(self, name):
-        ret_sprite = None
-        for s in self.sprites():
-            if s.name == name:
-                ret_sprite = s
-        return ret_sprite
-
-    def find_sprites_by_desc(self, attr1, value1, attr2=None, value2=None):
-        ret_sprites = []
-        for s in self.sprites():
-            found = (s.get_config(attr1) == value1)
-            if found and attr2 is not None and value2 is not None:
-                found = (s.get_config(attr2) == value2)
-            if found:
-                ret_sprites.append(s)
-        return ret_sprites
-
-    def find_sprites_by_name(self, name):
-        return self.find_sprites_by_desc("name", name)
-
-    def find_sprite_by_uuid(self, uuid):
-        result = self.find_sprites_by_desc("uuid", uuid)
-        if len(result) == 0:
-            return None
-        else:
-            return result[0]
-
-    def kill_uuid(self, uuid):
-        found = False
-        if uuid is not None:
-            s = self.find_sprite_by_uuid(uuid)
-            if s is not None:
-                found = True
-                s.kill()
-        return found
-
-    def kill_sprites_by_desc(self, attr1, value1, attr2=None, value2=None):
-        sprites = self.find_sprites_by_desc(attr1, value1, attr2, value2)
-        for s in sprites:
-            s.kill()
-        return len(sprites)
-
-    def find_collisions(self):
-        sprite_dict = pygame.sprite.groupcollide(self, self, False, False)
-        self_collisions = []
-        for spr in sprite_dict:
-            sprite_dict[spr].remove(spr)
-            if len(sprite_dict[spr]) == 0:
-                self_collisions.append(spr)
-
-        for spr in self_collisions:
-            sprite_dict.pop(spr)
-
-        sprite_collisions = []
-        for spr, spr_list in sprite_dict.items():
-            sprite_collisions.append((spr, spr_list[0].rect))
-
-        return sprite_collisions
-
-    def find_click(self, x, y, click_event=True):
-        sprite_str = ""
-        for s in self.sprites():
-            if s.rect.collidepoint(x, y) and sprite_str == "":
-                if s.event_on_click != None and click_event:
-                    sprite_str = s.name
-                    ev = s.event_on_click
-                    ev.pos = x, y
-                    EventManager.post(ev)
-                elif s.event_on_unclick != None and not click_event:
-                    sprite_str = s.name
-                    ev = s.event_on_unclick
-                    ev.pos = x, y
-                    EventManager.post(ev)
-        return sprite_str
-
-    def event(self, e):
-        dealt_with = False
-        if e.type == EVENT_GAME_CONTROL:
-            if e.action == "MouseLeftClick" or e.action == "MouseUnclick":
-                x, y = e.info['pos']
-                sprite_str = self.find_click(
-                    x, y, (e.action == "MouseLeftClick"))
-                dealt_with = (sprite_str != "")
-            elif e.action == "KillSpriteUUID":
-                dealt_with = self.kill_uuid(e.info['uuid'])
-        return dealt_with
-
-    def cleanup(self):
-        pass
-
-    def slow_update(self):
-        for s in self.sprites():
-            s.slow_update()
-
-    def start_game(self):
-        self._game_active = True
-        for s in self.sprites():
-            s.start_game()
-
-    def end_game(self):
-        for s in self.sprites():
-            s.end_game()
-        self._game_active = False
 
 # --------------------------------------------------

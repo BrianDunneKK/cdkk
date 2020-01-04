@@ -46,7 +46,7 @@ class Sprite_Button(Sprite_TextBox):
 class Sprite_GameOver(Sprite_TextBox):
     def __init__(self, rect, style=None):
         super().__init__("Game Over", rect, style=merge_dicts(stylesheet.style("GameOver"), style), auto_size=False)
-        self.style_to_size()
+        self.style_to_pos_size()
         self.rect.center = rect.center
 
 ### --------------------------------------------------
@@ -290,31 +290,3 @@ class Sprite_ImageGridActor(Sprite_Animation, GridActor):
         self.image_dir = new_dir
 
 ### --------------------------------------------------
-
-class SpriteManager_SplashScreen(SpriteManager):
-    def __init__(self, limits, display_time, filename):
-        super().__init__("Splash Screen Manager")
-        splash = Sprite(name="Splash Screen")
-        splash.load_image_from_file(filename)
-        splash.rect.center = limits.center
-        self.add(splash)
-        self._splash_displayed = True
-        self._clear_timer = Timer(display_time, EVENT_GAME_FLOW)
-
-    def clear_splash(self):
-        self.empty()
-        self._splash_displayed = False
-
-    def start_game(self):
-        super().start_game()
-        self.clear_splash()
-
-    def event(self, e):
-        dealt_with = super().event(e)
-        if not dealt_with and e.type == EVENT_GAME_FLOW:
-            if self._splash_displayed:
-                self.clear_splash()
-                dealt_with = True
-        return dealt_with
-
-# --------------------------------------------------

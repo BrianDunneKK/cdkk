@@ -827,12 +827,12 @@ EVENT_GAME_TIMER_2 = pygame.USEREVENT + 5
 EVENT_NEXT_USER_EVENT = pygame.USEREVENT + 6
 
 # Game Control Actions
-#   e.action: StartGame, GameOver, QuitGame, Board, Pass, Hint, ClearHint, Print, UpdateScore, KillSpriteUUID,
-#             MouseMotion, MouseLeftClick, MouseRightClick, MouseUnclick
+#   e.action: StartGame, GameOver, ClearGameOver, QuitGame, Board, Pass, Hint, ClearHint, Print, Keyboard,
+#             UpdateScore, KillSpriteUUID, MouseMotion, MouseLeftClick, MouseRightClick, MouseUnclick
 #   e.info: Dictionary with additional event information, including:
 #             pos   - Mouse position for MouseMotion, MouseLeftClick, MouseRightClick and MouseUnclick
 #             value - Delta value for UpdateScore
-
+#             key   - Name of key pressed
 
 class EventManager:
     def info_to_str(e):
@@ -970,6 +970,15 @@ class EventManager:
                     dealt_with = True
 
         return dealt_with
+
+    def post_key_name(self, e):
+        if e.type == pygame.KEYDOWN:
+            try:
+                key_name = "K_" + pygame.key.name(e.key)
+                EventManager.post_game_control("Keyboard", key=key_name)
+                return key_name
+            except:
+                return None
 
 # --------------------------------------------------
 
