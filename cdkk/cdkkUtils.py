@@ -7,6 +7,7 @@ from collections import deque
 import random
 import os
 import msvcrt
+import re
 
 # --------------------------------------------------
 
@@ -38,9 +39,30 @@ def merge_dicts(*dict_args):
 
 # --------------------------------------------------
 
-def getch(as_upper=True):
-    ch = msvcrt.getch().decode('ASCII')
-    return (ch if not as_upper else ch.upper())
+def read_key(as_upper=True, digit_only=False, match_pattern=None):
+    ret_code = None
+    wait_for_key = True
+
+    while wait_for_key:
+        ch = msvcrt.getch().decode('ASCII')
+        wait_for_key = False
+        if match_pattern is not None:
+            if re.match(match_pattern, ch):
+                if digit_only:
+                    ret_code = int(ch) - int("0")
+                else:
+                    ret_code = ch
+            else:
+                wait_for_key = True
+        elif digit_only:
+            if '0' <= ch <= '9':
+                ret_code = int(ch) - int("0")
+            else:
+                wait_for_key = True
+        else:
+            ret_code = (ch if not as_upper else ch.upper())
+
+    return ret_code
 
 # --------------------------------------------------
 
@@ -712,6 +734,16 @@ class MovingRect(cdkkRect, Physics):
         self.apply_limits(self.use_physics)
         self.left = self.curr_pos_x
         self.top = self.curr_pos_y
+
+    def move_action(self, action=None, mx=1, my=1):
+        dx = dy = 0
+        if action == "MoveLeft": dx = -1
+        elif action == "MoveRight": dx = 1
+        elif action == "MoveUp": dy = -1
+        elif action == "MoveDown": dy = 1
+        dx = dx * mx
+        dy = dy * my
+        self.move_physics(dx, dy)
 
 # --------------------------------------------------
 

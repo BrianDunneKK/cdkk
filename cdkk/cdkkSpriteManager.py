@@ -4,6 +4,7 @@ from cdkk.cdkkApp import *
 
 # --------------------------------------------------
 
+
 class SpriteManager(pygame.sprite.LayeredUpdates):
     def __init__(self, name, **sm_config):
         super().__init__()
@@ -180,16 +181,16 @@ class SpriteManager(pygame.sprite.LayeredUpdates):
 
 
 class SM_Scoreboard(SpriteManager):
-    def __init__(self, game_time, limits=None, score_style=None, timer_style=None, fps_style=None, gameover_style=None, name="Scoreboard Manager"):
+    def __init__(self, game_time=None, limits=None, score_style=None, timer_style=None, fps_style=None, gameover_style=None, name="Scoreboard Manager"):
         super().__init__(name)
         if limits is None:
             limits = self.app_boundary
-            
+
         default_style = {"fillcolour": None,
                          "outlinecolour": None, "align_horiz": "L"}
         score_style = merge_dicts(default_style, score_style)
         timer_style = merge_dicts(default_style, timer_style)
-        fps_style = merge_dicts(default_style, {"invisible":True}, fps_style)
+        fps_style = merge_dicts(default_style, {"invisible": True}, fps_style)
 
         self._score_value = 0
         self.score_text = Sprite_TextBox(
@@ -197,13 +198,12 @@ class SM_Scoreboard(SpriteManager):
         self.score_text.set_text_format("Score: {0}", self._score_value)
         self.add(self.score_text)
 
+        self._game_time = None
         self.game_time = game_time
-        self._timer = Timer(
-            self.game_time, EVENT_GAME_TIMER_1, auto_start=False)
         self.timer_text = Sprite_TextBox("Time Left", cdkkRect(
             limits.width - 250, 10, 200, 40), timer_style)
-        self.timer_text.set_text_format(
-            "Time Left: {0:0.1f}", self._timer.time_left)
+        self.timer_text.set_text_format("Time Left: {0:0.1f}",
+                                        self.time_left)
         self.add(self.timer_text)
 
         self.fps_text = Sprite_TextBox("FPS", cdkkRect(
@@ -222,6 +222,26 @@ class SM_Scoreboard(SpriteManager):
         self._score_value = new_score
         self.score_text.set_text(self.score)
 
+    @property
+    def game_time(self):
+        return self._game_time
+
+    @score.setter
+    def game_time(self, new_game_time):
+        self._game_time = new_game_time
+        if new_game_time is not None:
+            self._timer = Timer(self.game_time, EVENT_GAME_TIMER_1,
+                                auto_start=False)
+        else:
+            self._timer = None
+
+    @property
+    def time_left(self):
+        if self._timer is None:
+            return 0
+        else:
+            return self._timer.time_left
+
     def set_fps(self, new_fps):
         self.fps_text.set_text(new_fps)
 
@@ -232,7 +252,8 @@ class SM_Scoreboard(SpriteManager):
             if e.action == "UpdateScore":
                 self.score = self.score + e.info['score']
             elif e.action == "IncreaseTime":
-                self._timer.extend_timer(e.info["increment"])
+                if self._timer is not None:
+                    self._timer.extend_timer(e.info["increment"])
             elif e.action == "ClearGameOver":
                 self.clear_game_over()
             else:
@@ -241,20 +262,21 @@ class SM_Scoreboard(SpriteManager):
 
     def slow_update(self):
         if self.game_is_active:
-            self.timer_text.set_text(self._timer.time_left)
+            self.timer_text.set_text(self.time_left)
             app = self.get_config("cdkkApp", None)
             self.set_fps(app.loops_per_sec)
 
     def start_game(self):
         super().start_game()
         self.score = 0
-        self._timer.start()
-        self.timer_text.set_text(self._timer.time_left)
+        if self._timer is not None:
+            self._timer.start()
+        self.timer_text.set_text(self.time_left)
         self.clear_game_over()
 
     def end_game(self):
         self.add(self.game_over)
-        if self._timer.time_left < 0.25:
+        if self.time_left < 0.25:
             self.timer_text.set_text(0)
         self.set_fps(0)
         super().end_game()
