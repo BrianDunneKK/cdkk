@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
      name='cdkk',  
-     version='0.4',
+     version='0.5',
      author="Brian Dunne",
      author_email="Hidden@gmail.com",
      description="Python wrappers created by CoderDojo Kilkenny",
