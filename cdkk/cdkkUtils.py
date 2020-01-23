@@ -39,7 +39,7 @@ def merge_dicts(*dict_args):
 
 # --------------------------------------------------
 
-def read_key(as_upper=True, digit_only=False, match_pattern=None):
+def read_key(as_upper=True, as_int=False, match_pattern=None):
     ret_code = None
     wait_for_key = True
 
@@ -48,19 +48,16 @@ def read_key(as_upper=True, digit_only=False, match_pattern=None):
         wait_for_key = False
         if match_pattern is not None:
             if re.match(match_pattern, ch):
-                if digit_only:
-                    ret_code = int(ch) - int("0")
-                else:
-                    ret_code = ch
-            else:
-                wait_for_key = True
-        elif digit_only:
-            if '0' <= ch <= '9':
-                ret_code = int(ch) - int("0")
+                ret_code = ch
             else:
                 wait_for_key = True
         else:
-            ret_code = (ch if not as_upper else ch.upper())
+            ret_code = ch
+
+    if as_int:
+        ret_code = int(ret_code) - int("0")
+    elif as_upper:
+        ret_code = ret_code.upper()
 
     return ret_code
 
