@@ -7,8 +7,10 @@ class Board:
 
     def init_board(self, xsize=None, ysize=None):
         self._pieces = []
+        if ysize is None:
+            ysize = xsize
         self._size = (xsize, ysize)
-        if xsize is not None and ysize is not None:
+        if xsize is not None:
             for y in range(0, ysize):
                 row = []
                 for x in range(0, xsize):
@@ -379,6 +381,11 @@ class GameManagerMP(GameManager):  # Multi-Player Game
     def winner_num(self):
         return self.game_get_context("WinnerNum")
 
+    @winner_num.setter
+    def winner_num(self, new_winner_num):
+        self.game_set_context("WinnerNum", new_winner_num)
+        self.set_game_over(new_winner_num is not None)
+
     @property
     def winner_code(self):
         if self.winner_num is None:
@@ -475,6 +482,7 @@ class BoardGame(GameManagerMP, Board):
         c, r = (col, row)
         valid_move = self.valid_play(col, row)
         if valid_move:
+            self.game_set_context("ValidMove", True)
             self.next_turn()
             c, r = self.calculate_play(col, row)
             consequences = self.execute_play(c, r)
@@ -483,12 +491,11 @@ class BoardGame(GameManagerMP, Board):
                                     self.calculate_changes(c, r, consequences))
             p = self.current_player
             self.next_player()
-            winner_num = self.game_set_context("WinnerNum", self.check_game_over(p, c, r))
+            self.winner_num = self.check_game_over(p, c, r)
         else:
             p = None
-            winner_num = self.game_set_context("WinnerNum", None)
-
-        self.set_game_over(winner_num is not None)
+            self.winner_num = None
+            self.game_set_context("ValidMove", False)
 
         return self.game_full_context
 
