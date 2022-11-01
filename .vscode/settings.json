@@ -1,3 +1,16 @@
 {
-    "python.pythonPath": "C:\\Users\\Brian\\AppData\\Local\\Programs\\Python\\Python37-32\\python.exe"
+    "python.pythonPath": "C:\\Users\\Brian\\AppData\\Local\\Programs\\Python\\Python37-32\\python.exe",
+    "python.testing.pytestArgs": [
+        "cdkk"
+    ],
+    "python.testing.unittestEnabled": true,
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./unittest",
+        "-p",
+        "test_*.py"
+    ],
+    "python.analysis.typeCheckingMode": "basic"
 }
