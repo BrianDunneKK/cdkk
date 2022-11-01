@@ -22,12 +22,12 @@ class Console:
 
     def print(self, *args, **kwargs):
         if self.clear_next_print:
-            self.clear_console()
+            self.clear()
             self.clear_next_print = False
         if not self.config.get("silent", False):
             Console.console.print(*args, **kwargs, highlight = False)
 
-    def clear_console(self):
+    def clear(self):
         if not self.config.get("silent", False):
                 self.console.clear()
     
