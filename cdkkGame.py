@@ -30,8 +30,11 @@ class Game:
 
     @property
     def players(self):
-        # Return True if the game is over
         return self._num_players
+
+    @players.setter
+    def players(self, value: int):
+        self._num_players = value
 
     @property
     def counts(self):
@@ -57,7 +60,8 @@ class Game:
 
     def init(self):
         # Return True if initialised OK
-        self._num_players = int(self.config.get("players", 1))
+        if self._num_players == 0:
+            self._num_players = int(self.config.get("players", 1))
         self._player_wins = [0 for x in range(self.players)]
         return True
 
