@@ -37,20 +37,20 @@ class Words:
                 for word in all_words:
                     self._words.append(word.upper())
 
-    def random_word(self):
+    def random_word(self) -> str:
         return choice(self._words).upper()
 
-    def contains_word(self, word):
+    def contains_word(self, word) -> bool:
         return (word in self._words)
 
-    def match_pattern(self, pattern):
+    def match_pattern(self, pattern) -> list:
         match_words = []
         for word in self._words:
             if re.search(pattern, word):
                 match_words.append(word)
         return match_words
 
-    def frequency(self, pattern = ".*", sorted_keys = True):
+    def frequency(self, pattern = ".*", sorted_keys = True) -> dict:
         freq = {x: 0 for x in list(ascii_uppercase)}
         match_words = self.match_pattern(pattern)
         for word in match_words:

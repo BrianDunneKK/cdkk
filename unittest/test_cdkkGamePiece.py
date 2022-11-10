@@ -1,0 +1,133 @@
+import unittest
+from cdkkGamePiece import *
+
+class Test_cdkkGamePiece(unittest.TestCase):
+    def test_GamePiece(self):
+        piece = GamePiece()
+        self.assertEquals(piece.code, 0)
+        self.assertEquals(piece.value, 0)
+        self.assertEquals(piece.symbol, " ")
+        self.assertEquals(piece.str_xcols, 1)
+        self.assertEquals(piece.str_yrows, 1)
+
+    def test_GamePiece5(self):
+        piece = GamePiece(5)
+        self.assertEquals(piece.code, 5)
+        self.assertEquals(piece.value, 5)
+        self.assertEquals(piece.symbol, "5")
+
+    def test_GamePiece7X(self):
+        piece = GamePiece(7, symbol="X")
+        self.assertEquals(piece.code, 7)
+        self.assertEquals(piece.value, 7)
+        self.assertEquals(piece.symbol, "X")
+
+    def test_GamePiece7O9(self):
+        piece = GamePiece(7, 9, symbol="O")
+        self.assertEquals(piece.code, 7)
+        self.assertEquals(piece.value, 9)
+        self.assertEquals(piece.symbol, "O")
+
+    def test_clear(self):
+        piece = GamePiece(5)
+        self.assertEquals(piece.code, 5)
+        piece.clear()
+        self.assertEquals(piece.code, 0)
+
+    def test_context(self):
+        piece = GamePiece(5, context = {"player":"Fred"})
+        self.assertEquals(piece.context["player"], "Fred")
+        piece.context["player"] = "Barney"
+        self.assertEquals(piece.context["player"], "Barney")
+
+    def test_gamepieceset(self):
+        set = GamePieceSet([GamePiece(1, 10), GamePiece(2, 20), GamePiece(3, 30), GamePiece(4, 40), GamePiece(5, 50)])
+        self.assertEquals(set.count, 5)
+        self.assertEquals(sorted(set.codes), [1,2,3,4,5])
+        self.assertEquals(sorted(set.values), [10,20,30,40,50])
+        self.assertEquals(set.strings, [["1"],["2"],["3"],["4"],["5"]])
+
+# ----------------------------------------
+
+class Test_cdkkDice(unittest.TestCase):
+    def test_Dice(self):
+        piece = Dice()
+        self.assertEquals(piece.code, 0)
+        self.assertEquals(piece.value, 0)
+        self.assertEquals(piece.symbol, " ")
+        self.assertEquals(piece.str_xcols, 9)
+        self.assertEquals(piece.str_yrows, 5)
+        self.assertEquals("".join(piece.strings()), "┌───────┐│       ││       ││       │└───────┘")
+
+    def test_Dice3(self):
+        piece = Dice(3)
+        self.assertEquals(piece.code, 3)
+        self.assertEquals(piece.value, 3)
+        self.assertEquals(piece.symbol, "3")
+        self.assertEquals("".join(piece.strings()), "┌───────┐│ ●     ││   ●   ││     ● │└───────┘")
+
+    def test_random(self):
+        piece = Dice(random_dice = True)
+        self.assertTrue(piece.code > 0)
+        self.assertEquals(piece.value, piece.code)
+        self.assertEquals(piece.symbol, str(piece.code))
+
+    def test_context(self):
+        piece = Dice(5, context = {"player":"Fred"})
+        self.assertEquals(piece.context["player"], "Fred")
+        piece.context["player"] = "Barney"
+        self.assertEquals(piece.context["player"], "Barney")
+
+# ----------------------------------------
+
+class Test_cdkkCard(unittest.TestCase):
+    def test_Card(self):
+        piece = Card()
+        self.assertEquals(piece.code, 0)
+        self.assertEquals(piece.value, 0)
+        self.assertEquals(piece.symbol, "  ")
+        self.assertEquals(piece.suit, " ")
+        self.assertEquals(piece.rank, " ")
+        self.assertEquals(piece.str_xcols, 11)
+        self.assertEquals(piece.str_yrows, 9)
+
+    def test_Card5(self):
+        piece = Card(5)
+        self.assertEquals(piece.code, 5)
+        self.assertEquals(piece.value, 5)
+        self.assertEquals(piece.symbol, "5♠")
+        self.assertEquals(piece.suit, "♠")
+        self.assertEquals(piece.rank, "5")
+
+    def test_Card143852(self):
+        piece = Card(14)
+        self.assertEquals(piece.symbol, "A♥")
+        piece = Card(38)
+        self.assertEquals(piece.symbol, "Q♦")
+        piece = Card(52)
+        self.assertEquals(piece.symbol, "K♣")
+
+    def test_joker(self):
+        piece = Card(53)
+        self.assertEquals(piece.code, 53)
+        self.assertEquals(piece.value, 53)
+        self.assertEquals(piece.symbol, "Joker")
+        self.assertEquals(piece.suit, "Joker")
+        self.assertEquals(piece.rank, "☺")
+
+    def test_random_code1(self):
+        piece = Card(random_card = True)
+        self.assertTrue(piece.code > 0)
+        code = piece.random_code()
+        self.assertTrue(code > 0)
+
+    def test_context(self):
+        piece = Card(5, context = {"hidden":True})
+        self.assertTrue(piece.context["hidden"])
+        piece.context["player"] = False
+        self.assertFalse(piece.context["player"])
+
+# ----------------------------------------
+
+if __name__ == '__main__':
+    unittest.main()

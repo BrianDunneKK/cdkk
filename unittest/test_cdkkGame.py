@@ -1,5 +1,4 @@
 import unittest
-from cdkkConfig import Config
 from cdkkGame import Game
 
 class Test_cdkkGame(unittest.TestCase):
@@ -51,6 +50,28 @@ class Test_cdkkGame(unittest.TestCase):
         self.assertEquals(game.max_turns, 6)
         counts = game.counts
         self.assertEquals(counts["max_turns"], 6)
+
+    def test_take_turns1(self):
+        game = Game(({"players":2}))
+        game.init()
+        game.start()
+        self.assertEquals(game.current_player, 1)
+        game.take(None)
+        self.assertEquals(game.current_player, 2)
+        game.take(None)
+        self.assertEquals(game.current_player, 1)
+
+    def test_take_turns2(self):
+        game = Game(({"players":2}))
+        game.next_after_update = False
+        game.init()
+        game.start()
+        self.assertEquals(game.current_player, 1)
+        game.take(None)
+        self.assertEquals(game.current_player, 1)
+        game.next_after_update = True
+        game.take(None)
+        self.assertEquals(game.current_player, 2)
 
 if __name__ == '__main__':
     unittest.main()

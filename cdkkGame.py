@@ -10,6 +10,7 @@ class Game:
         self.config.update(init_config)
         self._game_count = self._turn_count = self.current_player = self._num_players = 0
         self._player_wins = []
+        self.next_after_update = True
         self.status = -2
             # Game status:
             #   -2 = No game in progress
@@ -20,16 +21,16 @@ class Game:
             # 100+ = Game over - Error number
 
     @property
-    def game_over(self):
+    def game_over(self) -> bool:
         # Return True if the game is over
         return (self.status >= 0)
 
     @property
-    def max_turns(self):
+    def max_turns(self) -> int:
         return int(self.config.get("max_turns", maxsize))
 
     @property
-    def players(self):
+    def players(self) -> int:
         return self._num_players
 
     @players.setter
@@ -37,7 +38,7 @@ class Game:
         self._num_players = value
 
     @property
-    def counts(self):
+    def counts(self) -> dict:
         return {
             "players":self._num_players
             ,"turns":self._turn_count
@@ -51,14 +52,15 @@ class Game:
         self.update(turn)
         if not self.game_over:
             self._turn_count += 1
-            self.current_player += 1
-            if self.current_player > self._num_players:
-                self.current_player = 1
+            if self.next_after_update:
+                self.current_player += 1
+                if self.current_player > self._num_players:
+                    self.current_player = 1
         else:
             if (self.status > 0 and self.status < 99):
                 self._player_wins[self.current_player-1] += 1
 
-    def init(self):
+    def init(self) -> bool:
         # Return True if initialised OK
         if self._num_players == 0:
             self._num_players = int(self.config.get("players", 1))
@@ -71,7 +73,7 @@ class Game:
         self.current_player = 1
         self.status = -1
 
-    def check(self, turn):
+    def check(self, turn) -> str:
         # Return "" if this turn is valid. Otherwise an error message. 
         return ("")
 
