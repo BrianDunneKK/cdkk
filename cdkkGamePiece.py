@@ -1,3 +1,5 @@
+# To Do ... Add "colour" as context
+
 import random
 
 class GamePiece:
@@ -151,7 +153,18 @@ class Card(GamePiece):
     def strings(self) -> list[str]:
         if self.code == 0:
             return ["           "] * 9
-        elif self.code < 100:
+        elif self.context["hidden"]: # ░ ▒ ▓ █
+            return  [
+                "┌─────────┐"
+                ,"│▒▒▒▒▒▒▒▒▒│"
+                ,"│▒▒▒▒▒▒▒▒▒│"
+                ,"│▒▒▒▒▒▒▒▒▒│"
+                ,"│▒▒▒▒▒▒▒▒▒│"
+                ,"│▒▒▒▒▒▒▒▒▒│"
+                ,"│▒▒▒▒▒▒▒▒▒│"
+                ,"│▒▒▒▒▒▒▒▒▒│"
+                ,"└─────────┘"]
+        else:
             return  [
                 "┌─────────┐"
                 ,f"│{self.rank:<2}       │"
@@ -161,17 +174,6 @@ class Card(GamePiece):
                 ,f"│         │"
                 ,f"│         │"
                 ,f"│       {self.rank:>2}│"
-                ,"└─────────┘"]
-        else: # ░ ▒ ▓ █
-            return  [
-                "┌─────────┐"
-                ,"│▒▒▒▒▒▒▒▒▒│"
-                ,"│▒▒▒▒▒▒▒▒▒│"
-                ,"│▒▒▒▒▒▒▒▒▒│"
-                ,"│▒▒▒▒▒▒▒▒▒│"
-                ,"│▒▒▒▒▒▒▒▒▒│"
-                ,"│▒▒▒▒▒▒▒▒▒│"
-                ,"│▒▒▒▒▒▒▒▒▒│"
                 ,"└─────────┘"]
         
 
