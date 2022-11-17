@@ -1,5 +1,4 @@
-# To Do ... Add "colour" as context
-
+from collections import deque
 import random
 
 class GamePiece:
@@ -57,14 +56,21 @@ class GamePiece:
     def clear(self) -> int:
         return self.set()
 
+    def cstrings(self) -> list[str]:
+        colour = self.context.get("colour", "")
+        if colour != "":
+            return ["["+colour+"]" + s + "[/"+colour+"]" for s in self.strings()]
+        else:
+            return self.strings()
+
     def strings(self) -> list[str]:
         return [f"{self.symbol}"]
 
 # ----------------------------------------
 
 class GamePieceSet:
-    def __init__(self, pieces: list[GamePiece]) -> None:
-        self.pieces = pieces
+    def __init__(self, pieces: list[GamePiece] = []) -> None:
+        self.pieces = deque(pieces)
 
     @property
     def count(self) -> int:
@@ -152,9 +158,9 @@ class Card(GamePiece):
 
     def strings(self) -> list[str]:
         if self.code == 0:
-            return ["           "] * 9
-        elif self.context["hidden"]: # ░ ▒ ▓ █
-            return  [
+            strs = ["           "] * 9
+        elif self.context.get("hidden", False): # ░ ▒ ▓ █
+            strs = [
                 "┌─────────┐"
                 ,"│▒▒▒▒▒▒▒▒▒│"
                 ,"│▒▒▒▒▒▒▒▒▒│"
@@ -165,7 +171,7 @@ class Card(GamePiece):
                 ,"│▒▒▒▒▒▒▒▒▒│"
                 ,"└─────────┘"]
         else:
-            return  [
+            strs = [
                 "┌─────────┐"
                 ,f"│{self.rank:<2}       │"
                 ,f"│         │"
@@ -175,7 +181,8 @@ class Card(GamePiece):
                 ,f"│         │"
                 ,f"│       {self.rank:>2}│"
                 ,"└─────────┘"]
-        
+
+        return strs
 
 # ----------------------------------------
 
@@ -194,9 +201,9 @@ if __name__ == '__main__':
     card = Card(25)
     print(card.symbol)
     print(*card.strings(), sep="\n")
-    card = Card(53)
+    card = Card(53, context = {"colour":"red"}) # Joker
     print(card.symbol)
-    print(*card.strings(), sep="\n")
+    print(*card.cstrings(), sep="\n")
     card = Card(0)
     print(card.symbol)
     print(*card.strings(), sep="\n")

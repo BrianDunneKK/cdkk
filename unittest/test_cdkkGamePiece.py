@@ -49,6 +49,51 @@ class Test_cdkkGamePiece(unittest.TestCase):
 
 # ----------------------------------------
 
+class Test_cdkkGamePieceSet(unittest.TestCase):
+    def test_GamePieceSet1(self):
+        gpset = GamePieceSet()
+        self.assertEquals(gpset.count, 0)
+
+    def test_GamePieceSet2(self):
+        p1 = GamePiece(1)
+        p2 = GamePiece(2)
+        p3 = GamePiece(3)
+        gpset = GamePieceSet([p1,p2,p3])
+        self.assertEquals(gpset.count, 3)
+        self.assertEquals(gpset.codes, [1,2,3])
+        self.assertEquals(gpset.values, [1,2,3])
+
+    def test_GamePieceSet3(self):
+        gpset = GamePieceSet()
+        p1 = GamePiece(1)
+        p2 = GamePiece(2)
+        p3 = GamePiece(3)
+        self.assertEquals(gpset.count, 0)
+        gpset.pieces.append(p3)
+        self.assertEquals(gpset.count, 1)
+        gpset.pieces.append(p2)
+        self.assertEquals(gpset.codes, [3,2])
+        gpset.pieces.append(p1)
+        self.assertEquals(gpset.values, [3,2,1])
+        ppop = gpset.pieces.pop()  # LIFO
+        self.assertEquals(gpset.values, [3,2])
+
+    def test_GamePieceSet4(self):
+        p1 = GamePiece(1)
+        p2 = GamePiece(2)
+        p3 = GamePiece(3)
+        p4 = GamePiece(4)
+        gpset = GamePieceSet([p1,p2])
+        gpset.pieces.append(p3)
+        gpset.pieces.appendleft(p4)
+        self.assertEquals(gpset.values, [4,1,2,3])
+        ppop1 = gpset.pieces.pop()
+        self.assertEquals(gpset.values, [4,1,2])
+        ppop2 = gpset.pieces.popleft()
+        self.assertEquals(gpset.values, [1,2])
+
+# ----------------------------------------
+
 class Test_cdkkDice(unittest.TestCase):
     def test_Dice(self):
         piece = Dice()

@@ -102,7 +102,7 @@ class Board:
     def clear_all(self):
         self._board = [ [self.create_piece()]*self.xsize for i in range(self.ysize) ]
 
-    def strings(self, digits:int = 1, padding:str = " ") -> list[str]:
+    def strings(self, digits:int = 1, padding:str = " ", colour: bool = False) -> list[str]:
         piece_xcols = self._board[0][0].str_xcols
         piece_yrows = self._board[0][0].str_yrows
         total_xcols = piece_xcols * self.xsize + len(padding) * (self.xsize-1)
@@ -112,7 +112,10 @@ class Board:
         for r in range(self.ysize):
             for c in range(self.xsize):
                 piece = self._board[r][c]
-                piece_strs = piece.strings()
+                if colour:
+                    piece_strs = piece.cstrings()
+                else:
+                    piece_strs = piece.strings()
                 for pr in range(piece_yrows):
                     for pc in range(piece_xcols):
                         x = c*(piece_xcols + len(padding)) + pc

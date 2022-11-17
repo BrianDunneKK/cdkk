@@ -8,7 +8,7 @@ class Game:
     def __init__(self, init_config={}):
         self.config = Config(Game.default_config)
         self.config.update(init_config)
-        self._game_count = self._turn_count = self.current_player = self._num_players = 0
+        self._game_count = self._turn_count = self._current_player = self._num_players = 0
         self._player_wins = []
         self.next_after_update = True
         self.status = -2
@@ -30,6 +30,10 @@ class Game:
         return int(self.config.get("max_turns", maxsize))
 
     @property
+    def current_player(self) -> int:
+        return self._current_player
+
+    @property
     def players(self) -> int:
         return self._num_players
 
@@ -47,19 +51,6 @@ class Game:
             ,"wins":self._player_wins
             }
 
-    def take(self, turn):
-        # Take turn for player
-        self.update(turn)
-        if not self.game_over:
-            self._turn_count += 1
-            if self.next_after_update:
-                self.current_player += 1
-                if self.current_player > self._num_players:
-                    self.current_player = 1
-        else:
-            if (self.status > 0 and self.status < 99):
-                self._player_wins[self.current_player-1] += 1
-
     def init(self) -> bool:
         # Return True if initialised OK
         if self._num_players == 0:
@@ -70,7 +61,7 @@ class Game:
     def start(self):
         self._game_count += 1
         self._turn_count = 1
-        self.current_player = 1
+        self._current_player = 1
         self.status = -1
 
     def check(self, turn) -> str:
@@ -78,9 +69,26 @@ class Game:
         return ("")
 
     def update(self, turn):
-        # Run game logic, update game elements including status
+        # Run game logic, update game elements
         pass
-    
+
+    def update_status(self, turn) -> int:
+        return self.status
+
+    def take(self, turn):
+        # Take turn for player
+        self.update(turn)
+        self.update_status(turn)
+        if not self.game_over:
+            self._turn_count += 1
+            if self.next_after_update:
+                self._current_player += 1
+                if self._current_player > self._num_players:
+                    self._current_player = 1
+        else:
+            if (self.status > 0 and self.status < 99):
+                self._player_wins[self.status - 1] += 1
+
 #----------------------------------------
 
 if __name__ == '__main__':
