@@ -31,7 +31,7 @@ class Console:
         if not self.config.get("silent", False):
                 self.console.clear()
     
-#----------------------------------------
+# ----------------------------------------
 
 if __name__ == '__main__':
     console = Console()

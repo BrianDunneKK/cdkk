@@ -69,13 +69,13 @@ class Test_cdkkGamePieceSet(unittest.TestCase):
         p2 = GamePiece(2)
         p3 = GamePiece(3)
         self.assertEquals(gpset.count, 0)
-        gpset.pieces.append(p3)
+        gpset.append(p3)
         self.assertEquals(gpset.count, 1)
-        gpset.pieces.append(p2)
+        gpset.append(p2)
         self.assertEquals(gpset.codes, [3,2])
-        gpset.pieces.append(p1)
+        gpset.append(p1)
         self.assertEquals(gpset.values, [3,2,1])
-        ppop = gpset.pieces.pop()  # LIFO
+        ppop = gpset.pop()  # LIFO
         self.assertEquals(gpset.values, [3,2])
 
     def test_GamePieceSet4(self):
@@ -84,13 +84,23 @@ class Test_cdkkGamePieceSet(unittest.TestCase):
         p3 = GamePiece(3)
         p4 = GamePiece(4)
         gpset = GamePieceSet([p1,p2])
-        gpset.pieces.append(p3)
-        gpset.pieces.appendleft(p4)
+        gpset.append(p3)
+        gpset.appendleft(p4)
         self.assertEquals(gpset.values, [4,1,2,3])
-        ppop1 = gpset.pieces.pop()
+        ppop1 = gpset.pop()
         self.assertEquals(gpset.values, [4,1,2])
-        ppop2 = gpset.pieces.popleft()
+        ppop2 = gpset.popleft()
         self.assertEquals(gpset.values, [1,2])
+
+    def test_popN(self):
+        gpset = GamePieceSet()
+        for i in range(10):
+            gpset.append(GamePiece(i+1))
+        self.assertEquals(gpset.count, 10)
+
+        gpset2 = gpset.popN(6)
+        self.assertEquals(gpset.count, 4)
+        self.assertEquals(gpset2.count, 6)
 
 # ----------------------------------------
 
@@ -171,6 +181,13 @@ class Test_cdkkCard(unittest.TestCase):
         self.assertTrue(piece.context["hidden"])
         piece.context["player"] = False
         self.assertFalse(piece.context["player"])
+
+# ----------------------------------------
+
+class Test_cdkkCardDeck(unittest.TestCase):
+    def test_CardDeck(self):
+        deck = CardDeck()
+        self.assertEquals(deck.count, 52)
 
 # ----------------------------------------
 

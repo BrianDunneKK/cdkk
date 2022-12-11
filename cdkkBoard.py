@@ -1,5 +1,5 @@
-# To Do: Implement copy(another_board)
-from cdkkGamePiece import GamePiece
+from typing import cast
+from cdkkGamePiece import GamePiece, GamePieceSet, Card, CardDeck
 
 class Board:
     default_symbols = {0:" ", 1:"X", -1:"?"}
@@ -16,6 +16,7 @@ class Board:
         self.symbols(Board.default_symbols)
         self.symbols(symbol_dict)
         self.resize(xsize, ysize)
+        self.piece_size = (1,1)
 
     def create_piece(self, code: int = 0, value: int = -1) -> GamePiece:
         return GamePiece(code, value, symbol_dict=self._symbols)
@@ -90,6 +91,7 @@ class Board:
             self._board[y][x] = piece
         else:
             self._board[y][x] = self.create_piece(code)
+        self.piece_size = (self._board[y][x].str_xcols, self._board[y][x].str_yrows)
         return True
 
     def clear(self, x:int, y:int) -> bool:
@@ -103,10 +105,8 @@ class Board:
         self._board = [ [self.create_piece()]*self.xsize for i in range(self.ysize) ]
 
     def strings(self, digits:int = 1, padding:str = " ", colour: bool = False) -> list[str]:
-        piece_xcols = self._board[0][0].str_xcols
-        piece_yrows = self._board[0][0].str_yrows
-        total_xcols = piece_xcols * self.xsize + len(padding) * (self.xsize-1)
-        total_yrows = piece_yrows * self.ysize
+        total_xcols = self.piece_size[0] * self.xsize + len(padding) * (self.xsize-1)
+        total_yrows = self.piece_size[1] * self.ysize
         strs = [ "#" * total_xcols for i in range(total_yrows) ]
 
         for r in range(self.ysize):
@@ -116,16 +116,16 @@ class Board:
                     piece_strs = piece.cstrings()
                 else:
                     piece_strs = piece.strings()
-                for pr in range(piece_yrows):
-                    for pc in range(piece_xcols):
-                        x = c*(piece_xcols + len(padding)) + pc
-                        y = (self.ysize * piece_yrows - 1) - (r * piece_yrows) - (piece_yrows - 1) + pr
+                for pr in range(self.piece_size[1]):
+                    for pc in range(self.piece_size[0]):
+                        x = c*(self.piece_size[0] + len(padding)) + pc
+                        y = (self.ysize * self.piece_size[1] - 1) - (r * self.piece_size[1]) - (self.piece_size[1] - 1) + pr
                         strs[y] = strs[y][:x] + piece_strs[pr][pc] + strs[y][x+1:]
 
         for r in range(len(strs)):
             for c in range(self.xsize-1):
                 for pc in range(len(padding)):
-                    x = piece_xcols + c*(piece_xcols + len(padding)) + pc
+                    x = self.piece_size[0] + c*(self.piece_size[0] + len(padding)) + pc
                     strs[r] = strs[r][:x] + padding[pc] + strs[r][x+1:]
 
         return (strs)
@@ -194,7 +194,67 @@ class Board:
 
         return (x, y, command)
 
-#----------------------------------------
+# ----------------------------------------
+
+class GamePieceSetMgr(GamePieceSet):
+    def __init__(self \
+        ,pieces: list[GamePiece] = [] \
+        ,board: Board = Board(), board_origin: tuple[int,int] = (0,0) \
+        ,board_dir: tuple[int,int] = (1,0), board_wrap: tuple[int,int] = (0,-1)) -> None:
+
+        super().__init__(pieces)
+        self._board = board
+        self._board_origin = board_origin
+        self._board_dir = board_dir
+        self._board_wrap = board_wrap
+
+    def set_game_piece_bank(self, bank: GamePieceSet) -> None:
+        self._bank = bank
+
+    def take_from_bank(self, count: int, context: dict = {}) -> None:
+        self.extend(self._bank.popN(count, context))
+
+    def place_on_board(self, wrap = (0, -1)) -> None:
+        cell_offset = wrap_offset = 0
+        for piece in self:
+            x = self._board_origin[0] + cell_offset * self._board_dir[0] + wrap_offset * self._board_wrap[0]
+            y = self._board_origin[1] + cell_offset * self._board_dir[1] + wrap_offset * self._board_wrap[1]
+            if self._board.set(x, y, piece = piece):
+                cell_offset += 1
+            else:
+                cell_offset = 0
+                wrap_offset += 1
+                x = self._board_origin[0] + cell_offset * self._board_dir[0] + wrap_offset * self._board_wrap[0]
+                y = self._board_origin[1] + cell_offset * self._board_dir[1] + wrap_offset * self._board_wrap[1]
+                if self._board.set(x, y, piece = piece):
+                    cell_offset += 1
+                else:
+                    break
+
+# ----------------------------------------
+                                                                                                           
+class CardTable(Board):
+    def create_piece(self, code: int = 0, value: int = -1):
+        return Card(code)
+
+class CardPlayer(GamePieceSetMgr):
+    def __init__(self, cards: list[Card] = [], table: CardTable = CardTable(), deck: CardDeck = CardDeck() \
+        ,first_card: tuple[int, int] = (0, 0), cards_dir: tuple[int, int] = (1, 0), cards_wrap: tuple[int, int] = (0, -1)) -> None:
+
+        super().__init__(pieces=cast(list[GamePiece],cards), board = table \
+            ,board_origin=first_card, board_dir=cards_dir, board_wrap=cards_wrap)
+        self.set_deck(deck)
+
+    def set_deck(self, deck: CardDeck) -> None:
+        return super().set_game_piece_bank(deck)
+
+    def deal(self, count: int, context: dict = {}) -> None:
+        return super().take_from_bank(count, context)
+
+    def place_on_table(self, wrap=(0, -1)) -> None:
+        return super().place_on_board(wrap)
+
+# ----------------------------------------
 
 if __name__ == '__main__':
     board = Board(6, 5, {0:".", 1:"A", 2:"B", 3:"C", 4:"D", 5:"E", -1:"?"})
@@ -208,4 +268,11 @@ if __name__ == '__main__':
     print(f"(0,0) ... {board.in_a_row(0,0)}")
     print(f"(1,4) ... {board.in_a_row(1,4)}")
 
-# TO DO: Fix board.strings()
+    p1 = GamePiece(3)
+    p2 = GamePiece(6)
+    p3 = GamePiece(9)
+    board2 = Board(2,5)
+    gps1 = GamePieceSetMgr([p1, p2, p3], board = board2, board_origin=(0,2))
+    gps1.place_on_board()
+    print("\n".join(board2.strings(padding='')))
+

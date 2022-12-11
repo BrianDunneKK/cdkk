@@ -1,3 +1,4 @@
+from typing import cast
 from collections import deque
 import random
 
@@ -25,10 +26,13 @@ class GamePiece:
     def symbol(self, sym: str):
         self._symbol = sym
 
+    def add_context(self, context: dict = {}) -> None:
+        self.context = self.context | context
+
     def set(self, code: int = 0, value: int = -1, symbol: str = "", symbol_dict: dict = {}, context: dict = {}) -> int:
         self._code = code
         self._value = code if value == -1 else value
-        self.context = self.context | context
+        self.add_context(context)
 
         if symbol == "" and len(symbol_dict) > 0:
             default_sym = symbol_dict.get(-1, "")
@@ -68,28 +72,37 @@ class GamePiece:
 
 # ----------------------------------------
 
-class GamePieceSet:
-    def __init__(self, pieces: list[GamePiece] = []) -> None:
-        self.pieces = deque(pieces)
-
+class GamePieceSet(deque[GamePiece]):
     @property
     def count(self) -> int:
-        return len(self.pieces)
+        return len(self)
 
     @property
     def codes(self) -> list[int]:
-        lst = [p.code for p in self.pieces]
+        lst = [p.code for p in self]
         return lst
 
     @property
     def values(self) -> list[int]:
-        lst = [p.value for p in self.pieces]
+        lst = [p.value for p in self]
         return lst
 
     @property
     def strings(self) -> list[list[str]]:
-        lst = [p.strings() for p in self.pieces]
+        lst = [p.strings() for p in self]
         return lst
+
+    def popN(self, n: int, context: dict = {}) -> deque[GamePiece]:
+        gps = GamePieceSet()
+        for i in range(n):
+            piece = self.pop()
+            piece.add_context(context)
+            gps.append(piece)
+        return gps
+
+    def add_context(self, context: dict = {}) -> None:
+        for piece in self:
+            piece.add_context(context)
 
 # ----------------------------------------
 
@@ -121,7 +134,7 @@ class Dice(GamePiece):
             ,"└───────┘"]
         
 
-# ----------------------------------------
+# ========================================
 
 class Card(GamePiece):
     card_sym = {1: "A", 2:"2", 3:"3", 4:"4", 5:"5", 6:"6", 7:"7", 8:"8", 9:"9", 10:"10", 11:"J", 12:"Q", 13:"K"}
@@ -156,6 +169,13 @@ class Card(GamePiece):
     def random_code(self) -> int:
         return random.randint(1, 52)
 
+    # def add_string_context(self, strs: list[str]) -> list[str]:
+    #     if "colour" in self.context:
+    #         col = self.context["colour"]
+    #         return [f"[{col}]{s}[/{col}]" for s in strs]
+    #     else:
+    #         return strs
+
     def strings(self) -> list[str]:
         if self.code == 0:
             strs = ["           "] * 9
@@ -183,6 +203,29 @@ class Card(GamePiece):
                 ,"└─────────┘"]
 
         return strs
+        # return self.add_string_context(strs)
+
+# ----------------------------------------
+
+class CardHand(GamePieceSet):
+    def deal(self, n: int) -> deque[Card]:
+        return cast(deque[Card], self.popN(n))
+
+# ----------------------------------------
+                                                                                                           
+class CardDeck(CardHand):
+    def __init__(self, shuffle:bool = False) -> None:
+        self.reset(shuffle)
+
+    def reset(self, shuffle:bool = False) -> None:
+        self.clear()
+        cards = deque[Card]()
+        codes = list(range(1,53))
+        if shuffle:
+            random.shuffle(codes)
+        for i in codes:
+            cards.append(Card(i))
+        self.extend(cards)
 
 # ----------------------------------------
 
@@ -210,3 +253,4 @@ if __name__ == '__main__':
     card = Card(101)
     print(card.symbol)
     print(*card.strings(), sep="\n")
+    

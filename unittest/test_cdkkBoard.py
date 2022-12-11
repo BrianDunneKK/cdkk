@@ -1,6 +1,6 @@
 import unittest
-from cdkkBoard import Board
 from cdkkGamePiece import GamePiece, Dice
+from cdkkBoard import Board, GamePieceSetMgr
 
 class Test_cdkkBoard(unittest.TestCase):
     def test_Board1(self):
@@ -212,7 +212,32 @@ class Test_cdkkBoard(unittest.TestCase):
         red_pieces = board.filter_pieces({"colour":"red", "hidden":True})
         self.assertEquals(len(red_pieces), 2)
 
+# ----------------------------------------
 
+class Test_cdkkGamePieceSetMgr(unittest.TestCase):
+    def test_GamePieceSetMgr(self):
+        gpsm = GamePieceSetMgr()
+        self.assertEqual(gpsm.count, 0)
+
+    def test_place_on_board(self):
+            p1 = GamePiece(3)
+            p2 = GamePiece(6)
+            p3 = GamePiece(9)
+            board2 = Board(5,3)
+            gps1 = GamePieceSetMgr([p1, p2, p3], board = board2)
+            gps1.place_on_board()
+            self.assertEqual("|".join(board2.strings(padding='')), "     |     |369  ")
+
+            gps2 = GamePieceSetMgr([p1, p2, p3], board = board2, board_origin=(4,1), board_dir=(-1,0))
+            gps2.place_on_board()
+            self.assertEqual("|".join(board2.strings(padding='')), "     |  963|369  ")
+
+            gps3 = GamePieceSetMgr([p1, p2, p3], board = board2, board_origin=(0,0), board_dir=(0,1))
+            gps3.place_on_board()
+            self.assertEqual("|".join(board2.strings(padding='')), "9    |6 963|369  ")
+
+
+# ----------------------------------------
 
 if __name__ == '__main__':
     unittest.main()

@@ -23,7 +23,7 @@ class Config:
     def copy(self, attribute:str, from_config, default):
         self.set(attribute, from_config.get(attribute, default))
 
-#----------------------------------------
+# ----------------------------------------
 
 if __name__ == '__main__':
     game = Config()
