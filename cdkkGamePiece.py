@@ -179,7 +179,18 @@ class Card(GamePiece):
     def strings(self) -> list[str]:
         if self.code == 0:
             strs = ["           "] * 9
-        elif self.context.get("hidden", False): # ░ ▒ ▓ █
+        elif self.context.get("hidden", False) and self.context.get("stack", False): # ░ ▒ ▓ █
+            strs = [
+                "┌────────┐ "
+                ,"│▒▒▒▒▒▒▒▒├┐"
+                ,"│▒▒▒▒▒▒▒▒││"
+                ,"│▒▒▒▒▒▒▒▒││"
+                ,"│▒▒▒▒▒▒▒▒││"
+                ,"│▒▒▒▒▒▒▒▒││"
+                ,"│▒▒▒▒▒▒▒▒││"
+                ,"└┬───────┘│"
+                ," └────────┘"]
+        elif self.context.get("hidden", False):
             strs = [
                 "┌─────────┐"
                 ,"│▒▒▒▒▒▒▒▒▒│"
@@ -190,6 +201,17 @@ class Card(GamePiece):
                 ,"│▒▒▒▒▒▒▒▒▒│"
                 ,"│▒▒▒▒▒▒▒▒▒│"
                 ,"└─────────┘"]
+        elif self.context.get("stack", False):
+            strs = [
+                  "┌────────┐ "
+                ,f"│{self.rank:<2}      ├┐"
+                ,f"│        ││"
+                ,f"│ {self.suit:^6} ││"
+                ,f"│        ││"
+                ,f"│        ││"
+                ,f"│      {self.rank:>2}││"
+                , "└┬───────┘│"
+                , " └────────┘"]
         else:
             strs = [
                 "┌─────────┐"
@@ -203,7 +225,6 @@ class Card(GamePiece):
                 ,"└─────────┘"]
 
         return strs
-        # return self.add_string_context(strs)
 
 # ----------------------------------------
 
