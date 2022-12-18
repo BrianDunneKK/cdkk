@@ -1,5 +1,6 @@
 from typing import cast
 from collections import deque
+from rich.text import Text
 import random
 
 class GamePiece:
@@ -60,12 +61,13 @@ class GamePiece:
     def clear(self) -> int:
         return self.set()
 
-    def cstrings(self) -> list[str]:
-        colour = self.context.get("colour", "")
-        if colour != "":
-            return ["["+colour+"]" + s + "[/"+colour+"]" for s in self.strings()]
-        else:
-            return self.strings()
+    def richtext(self) -> list[Text]:
+        style = self.context.get("style", "")
+        rt = [Text(s, style=style) for s in self.strings()]
+        # if style != "":
+        #     for t in rt:
+        #         t.stylize(style)
+        return rt
 
     def strings(self) -> list[str]:
         return [f"{self.symbol}"]
@@ -104,7 +106,7 @@ class GamePieceSet(deque[GamePiece]):
         for piece in self:
             piece.add_context(context)
 
-# ----------------------------------------
+# ========================================
 
 class Dice(GamePiece):
     pips = {
@@ -265,9 +267,6 @@ if __name__ == '__main__':
     card = Card(25)
     print(card.symbol)
     print(*card.strings(), sep="\n")
-    card = Card(53, context = {"colour":"red"}) # Joker
-    print(card.symbol)
-    print(*card.cstrings(), sep="\n")
     card = Card(0)
     print(card.symbol)
     print(*card.strings(), sep="\n")

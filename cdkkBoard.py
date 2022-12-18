@@ -1,4 +1,5 @@
-from typing import cast
+from typing import cast, Iterable
+from rich.text import Text
 from cdkkGamePiece import GamePiece, GamePieceSet, Card, CardDeck
 
 class Board:
@@ -104,7 +105,7 @@ class Board:
     def clear_all(self):
         self._board = [ [self.create_piece()]*self.xsize for i in range(self.ysize) ]
 
-    def strings(self, digits:int = 1, padding:str = " ", colour: bool = False) -> list[str]:
+    def strings(self, padding:str = " ") -> list[str]:
         total_xcols = self.piece_size[0] * self.xsize + len(padding) * (self.xsize-1)
         total_yrows = self.piece_size[1] * self.ysize
         strs = [ "#" * total_xcols for i in range(total_yrows) ]
@@ -112,10 +113,7 @@ class Board:
         for r in range(self.ysize):
             for c in range(self.xsize):
                 piece = self._board[r][c]
-                if colour:
-                    piece_strs = piece.cstrings()
-                else:
-                    piece_strs = piece.strings()
+                piece_strs = piece.strings()
                 for pr in range(self.piece_size[1]):
                     for pc in range(self.piece_size[0]):
                         x = c*(self.piece_size[0] + len(padding)) + pc
@@ -130,6 +128,116 @@ class Board:
 
         return (strs)
 
+    # Border on all sides; single line
+    borders_all1 = {'─':Text('─'), '│':Text(' │ '), '┌':Text(' ┌─'), '┐':Text('─┐ '), '└':Text(' └─') \
+        ,'┘':Text('─┘ '), '├':Text(' ├─'), '┤':Text('─┤ '), '┬':Text('─┬─'), '┴':Text('─┴─'), '┼':Text('─┼─') }
+
+    # Border on all sides; double line
+    borders_all2 = {'─':Text('═'), '│':Text(' ║ '), '┌':Text(' ╔═'), '┐':Text('═╗ '), '└':Text(' ╚═') \
+        ,'┘':Text('═╝ '), '├':Text(' ╠═'), '┤':Text('═╣ '), '┬':Text('═╦═'), '┴':Text('═╩═'), '┼':Text('═╬═') }
+
+    # Space as horizontal border (padding); no top/bottom/middle lines
+    borders_sph1 = {'│':Text(' '), '┬':Text(' '), '┴':Text(' '), \
+        '─':Text(''), '┌':Text(''), '┐':Text(''), '└':Text(''), '┘':Text(''), '├':Text(''), '┤':Text(''), '┼':Text('') }
+    borders_sph2 = {'│':Text('  '), '┬':Text('  '), '┴':Text('  '), \
+        '─':Text(''), '┌':Text(''), '┐':Text(''), '└':Text(''), '┘':Text(''), '├':Text(''), '┤':Text(''), '┼':Text('') }
+
+    def richtext(self, padding: list[Text] = [], \
+        borders: dict[str,Text] = {x:Text(x) for x in [*'─│┌┐└┘├┤┬┴┼']}) -> list[Text]:
+
+        if len(borders) == 0:
+            borders = {x:Text('') for x in [*'─│┌┐└┘├┤┬┴┼']}
+
+        total_xcols = self.piece_size[0] * self.xsize + len(borders['─']) * (self.xsize-1) + len(borders['┌']) + len(borders['┐'])
+        total_yrows = self.piece_size[1] * self.ysize + (len(borders['┼']) > 0) * (self.ysize-1) + (len(borders['┌']) > 0) + (len(borders['└']) > 0)
+        blank = Text('')
+        blank.pad_left(total_xcols, '#')
+        strs = [ blank for i in range(total_yrows) ]
+
+        horizstrs = []
+        for i in range(self.piece_size[0]):
+            horizstrs.append(borders['─'])
+        horizborder = Text('').join(horizstrs)
+
+        # Top border
+        yrow = 0
+        if len(borders['┌']) > 0:
+            rowstrs = [borders['┌']]
+            for i in range(self.xsize-1):
+                rowstrs.append(horizborder)
+                rowstrs.append(borders["┬"])
+            rowstrs.append(horizborder)
+            rowstrs.append(borders["┐"])
+            strs[yrow] = Text('').join(rowstrs)
+            yrow += 1
+
+        # Middle rows
+        middle_str = Text('')
+        if len(borders['┼']) > 0:
+            rowstrs = [borders['├']]
+            for i in range(self.xsize-1):
+                rowstrs.append(horizborder)
+                rowstrs.append(borders["┼"])
+            rowstrs.append(horizborder)
+            rowstrs.append(borders["┤"])
+            middle_str = Text('').join(rowstrs)
+
+        # Each game piece row
+        for r in range(self.ysize):
+
+            row_piece_strs = []
+            for c in range(self.xsize):
+                piece = self._board[r][c]
+                piece_rt = piece.richtext()
+                row_piece_strs.append(piece_rt)
+
+            # Each row of the game piece
+            for pr in range(self.piece_size[1]):
+                rowstrs = [borders["│"]]
+
+                # Each game piece column
+                for c in range(self.xsize):
+                    rowstrs.append(row_piece_strs[c][pr])
+                    rowstrs.append(borders["│"])
+
+                strs[yrow] = Text('').join(rowstrs)
+                yrow += 1
+
+            if len(borders['┼']) > 0:
+                strs[yrow] = middle_str
+                yrow += 1
+
+        # Bottom border
+        if len(borders['└']) > 0:
+            rowstrs = [borders['└']]
+            for i in range(self.xsize-1):
+                rowstrs.append(horizborder)
+                rowstrs.append(borders["┴"])
+            rowstrs.append(horizborder)
+            rowstrs.append(borders["┘"])
+            strs[total_yrows-1] = Text('').join(rowstrs)
+
+
+
+
+                    # for pc in range(self.piece_size[0]):
+                    #     x = c*(self.piece_size[0] + len(padding)) + pc
+                    #     y = (self.ysize * self.piece_size[1] - 1) - (r * self.piece_size[1]) - (self.piece_size[1] - 1) + pr
+                    #     strs[yrow+y] = Text.assemble(strs[y][:x], piece_strs[pr][pc], strs[y][x+1:])
+
+        for r in range(len(strs)):
+            for c in range(self.xsize-1):
+                for pc in range(len(padding)):
+                    x = self.piece_size[0] + c*(self.piece_size[0] + len(padding)) + pc
+                    strs[yrow+r] = strs[r][:x] + padding[pc] + strs[r][x+1:]
+
+        return (strs)
+
+    def rt_stylise(self, st_dict: dict[str,Text], style: str) -> dict[str,Text]:
+        for item in st_dict.items():
+            item[1].stylize(style)
+        return st_dict
+
     def frequency(self) -> dict:
         freq = {}
         for row in self._board: 
@@ -137,14 +245,14 @@ class Board:
                 freq[cell.code] = freq.get(cell.code, 0) + 1
         return freq
 
-    def in_a_row(self, xrow: int, ycol: int) -> dict:
+    def in_a_row(self, xrow: int, ycol: int) -> dict[str, int]:
         counts = { "N":0, "NE":0, "E":0, "SE":0, "S":0, "SW":0, "W":0, "NW":0 }
 
         for dir in counts:
             counts[dir] = self._in_a_row_dir(xrow, ycol, dir)
 
         counts["value"] = self.get(xrow, ycol)
-        counts["piece"] = self.get_piece(xrow, ycol)
+        # counts["piece"] = self.get_piece(xrow, ycol)
         counts["NS"] = max(counts["N"] + counts["S"] - 1, 0)
         counts["EW"] = max(counts["E"] + counts["W"] - 1, 0)
         counts["NESW"] = max(counts["NE"] + counts["SW"] - 1, 0)
@@ -238,7 +346,7 @@ class CardTable(Board):
         return Card(code)
 
 class CardPlayer(GamePieceSetMgr):
-    def __init__(self, cards: list[Card] = [], table: CardTable = CardTable(), deck: CardDeck = CardDeck() \
+    def __init__(self, cards: Iterable[Card] = [], table: CardTable = CardTable(), deck: CardDeck = CardDeck() \
         ,first_card: tuple[int, int] = (0, 0), cards_dir: tuple[int, int] = (1, 0), cards_wrap: tuple[int, int] = (0, -1)) -> None:
 
         super().__init__(pieces=cast(list[GamePiece],cards), board = table \
