@@ -10,6 +10,7 @@ class Game:
         self.config.update(init_config)
         self._game_count = self._turn_count = self._current_player = self._num_players = 0
         self._player_wins = self._scores = []
+        self.options: list[str] = []
         self.next_after_update = True
         self.status = -2
             # Game status:
@@ -76,11 +77,18 @@ class Game:
         self._current_player = 1
         self.status = -1
 
+    def calc_options(self) -> list[str]:
+        # Calculate possible turns
+        self.options.clear()
+        return self.options
+
     def check(self, turn) -> str:
-        # Return "" if this turn is valid. Otherwise an error message. 
+        # Return "" if this turn is valid. Otherwise an error message.
+        if len(self.options) > 0 and turn not in self.options:
+            return "That is not a valid option."
         return ("")
 
-    def update(self, turn):
+    def take(self, turn):
         # Run game logic, update game elements
         pass
 
@@ -91,9 +99,9 @@ class Game:
     def update_status(self, turn) -> int:
         return self.status
 
-    def take(self, turn):
-        # Take turn for player
-        self.update(turn)
+    def update(self, turn):
+        # Take turn for player: update game elements and run game logic
+        self.take(turn)
         self.calc_scores()
         self.update_status(turn)
         if not self.game_over:

@@ -30,16 +30,16 @@ class Test_cdkkGame(unittest.TestCase):
         self.assertEquals(counts["turns"], 1)
         self.assertEquals(counts["games"], 1)
 
-    def test_take(self):
+    def test_update(self):
         game = Game()
         game.start()
-        game.take(None)
+        game.update(None)
         counts = game.counts
         self.assertEquals(counts["turns"], 2)
         self.assertEquals(counts["games"], 1)
 
-        game.take(None)
-        game.take(None)
+        game.update(None)
+        game.update(None)
         counts = game.counts
         self.assertEquals(counts["turns"], 4)
 
@@ -51,17 +51,17 @@ class Test_cdkkGame(unittest.TestCase):
         counts = game.counts
         self.assertEquals(counts["max_turns"], 6)
 
-    def test_take_turns1(self):
+    def test_update_turns1(self):
         game = Game(({"players":2}))
         game.init()
         game.start()
         self.assertEquals(game.current_player, 1)
-        game.take(None)
+        game.update(None)
         self.assertEquals(game.current_player, 2)
-        game.take(None)
+        game.update(None)
         self.assertEquals(game.current_player, 1)
 
-    def test_take_turns2(self):
+    def test_update_turns2(self):
         game = Game(({"players":2}))
         game.next_after_update = False
         game.init()
@@ -70,7 +70,7 @@ class Test_cdkkGame(unittest.TestCase):
         game.take(None)
         self.assertEquals(game.current_player, 1)
         game.next_after_update = True
-        game.take(None)
+        game.update(None)
         self.assertEquals(game.current_player, 2)
 
     def test_scores(self):

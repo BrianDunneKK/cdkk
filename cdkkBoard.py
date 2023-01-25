@@ -1,5 +1,6 @@
 from typing import cast, Iterable
 from rich.text import Text
+from string import ascii_lowercase, hexdigits
 from cdkkGamePiece import GamePiece, GamePieceSet, Card, CardDeck
 
 class Board:
@@ -9,6 +10,8 @@ class Board:
         ,"E" :( 1, 0),  "W" :(-1, 0)
         ,"NE":( 1, 1),  "SW":(-1,-1)
         ,"SE":( 1,-1),  "NW":(-1, 1)
+        ,"U" :( 0, 1),  "D" :( 0,-1)
+        ,"R" :( 1, 0),  "L" :(-1, 0)
         }
 
     def __init__(self, xsize:int = 0, ysize:int = 0, symbol_dict: dict = {}):
@@ -49,6 +52,18 @@ class Board:
         else:
             return 0
 
+    def validate_xy(self, x:int, y:int) -> tuple:
+        if x<0 or y<0 or x>=self.xsize or y>=self.ysize:
+            x = -1
+            y = -1
+        return (x, y)
+
+    def offset(self, x:int, y:int, dir:str, count:int) -> tuple:
+        dx, dy = Board.directions.get(dir, (0,0))
+        x2 = x + dx * count
+        y2 = y + dy * count
+        return self.validate_xy(x2, y2)
+
     def symbols(self, sym:dict[int, str] = {}):
         if len(sym) > 0:
             self._symbols = sym
@@ -74,18 +89,31 @@ class Board:
             piece = self._board[y][x]
         return piece
 
-    def filter_pieces(self, filter:dict) -> list[GamePiece]:
-        pieces: list[GamePiece] = []
+    def get_offset(self, x:int, y:int, dir:str, count:int) -> int:
+        x, y = self.offset(x, y, dir, count)
+        return self.get(x, y)
+
+    def filter_by_code(self, code:int) -> list[tuple[int, int]]:
+        pieces: list[tuple[int, int]] = []
         for r in range(self.ysize):
             for c in range(self.xsize):
                 piece = self._board[r][c]
-                common = {k: filter[k] for k in filter if k in piece.context and filter[k] == piece.context[k]}
-                if len(common) == len(filter):
-                    pieces.append(piece)
+                if piece.code == code:
+                    pieces.append((c, r))
+        return pieces
+
+    def filter_by_context(self, context:dict) -> list[tuple[int, int]]:
+        pieces: list[tuple[int, int]] = []
+        for r in range(self.ysize):
+            for c in range(self.xsize):
+                piece = self._board[r][c]
+                common = {k: context[k] for k in context if k in piece.context and context[k] == piece.context[k]}
+                if len(common) == len(context):
+                    pieces.append((c, r))
         return pieces
 
     def set(self, x:int, y:int, code:int = 0, overwrite_ok:bool = True, piece:GamePiece|None = None) -> bool:
-        existing = int(self.get(x, y))
+        existing = self.get(x, y)
         if code < 0 or existing < 0 or (existing > 0 and not overwrite_ok):
             return False
         if piece is not None:
@@ -93,6 +121,19 @@ class Board:
         else:
             self._board[y][x] = self.create_piece(code)
         self.piece_size = (self._board[y][x].str_xcols, self._board[y][x].str_yrows)
+        return True
+
+    def set_unused(self, x:int, y:int) -> bool:
+        existing = int(self.get(x, y))
+        if existing >= 0:
+            self._board[y][x] = self.create_piece(-1)
+        return True
+
+    def set_unused_mask(self, mask:list[list[int]]) -> bool:
+        for yrow in range(len(mask)):
+            for xcol in range(len(mask[0])):
+                if mask[self.ysize-yrow-1][xcol] == 0:
+                    self.set_unused(xcol, yrow)
         return True
 
     def clear(self, x:int, y:int) -> bool:
@@ -103,7 +144,51 @@ class Board:
         return True
 
     def clear_all(self):
-        self._board = [ [self.create_piece()]*self.xsize for i in range(self.ysize) ]
+        for r in range(self.ysize):
+            for c in range(self.xsize):
+                self.clear(c, r)
+        # Need to iterate to respect unused cells
+        # self._board = [ [self.create_piece()]*self.xsize for i in range(self.ysize) ]
+
+    def fill(self, code:int = 0, overwrite_ok:bool = True) -> bool:
+        for r in range(self.ysize):
+            for c in range(self.xsize):
+                self.set(x=c, y=r, code=code, overwrite_ok=overwrite_ok)
+        return True
+
+    def move(self, x:int, y:int, dir:str, count:int, overwrite_ok:bool = True) -> int:
+        tx, ty = self.offset(x, y, dir, count)
+        from_code = self.get(x, y)
+        to_code = self.get(tx, ty)
+        if tx < 0 or ty < 0 or from_code <= 0 or to_code < 0 or (to_code > 0 and not overwrite_ok):
+            return -1
+        
+        self.set(tx, ty, piece = self.get_piece(x, y))
+        self.clear(x, y)
+        return to_code
+
+    def jump(self, x:int, y:int, dir:str, just_check:bool = False) -> int:
+        x1, y1 = self.offset(x, y, dir, 1)
+        x2, y2 = self.offset(x, y, dir, 2)
+        x0, y0 = self.validate_xy(x, y)
+        x1, y1 = self.validate_xy(x1, y1)
+        x2, y2 = self.validate_xy(x2, y2)
+
+        if x0 < 0 or x1 < 0 or x2 < 0 or y0 < 0 or y1 < 0 or y2 < 0:
+            return -1
+
+        c0 = self.get(x0, y0)
+        c1 = self.get(x1, y1)
+        c2 = self.get(x2, y2)
+
+        if c0 <= 0 or c1 <= 0 or c2 != 0:
+            return -1
+
+        if not just_check:
+            self.move(x0, y0, dir, 2)
+            self.clear(x1, y1)
+
+        return c1
 
     def strings(self, padding:str = " ") -> list[str]:
         total_xcols = self.piece_size[0] * self.xsize + len(padding) * (self.xsize-1)
@@ -129,11 +214,13 @@ class Board:
         return (strs)
 
     # Border on all sides; single line
-    borders_all1 = {'─':Text('─'), '│':Text(' │ '), '┌':Text(' ┌─'), '┐':Text('─┐ '), '└':Text(' └─') \
+    borders_single1 = {'─':Text('─'), '│':Text(' │ '), '┌':Text(' ┌─'), '┐':Text('─┐ '), '└':Text(' └─') \
         ,'┘':Text('─┘ '), '├':Text(' ├─'), '┤':Text('─┤ '), '┬':Text('─┬─'), '┴':Text('─┴─'), '┼':Text('─┼─') }
+    borders_single2 = {'─':Text('─'), '│':Text('  │  '), '┌':Text('  ┌──'), '┐':Text('──┐  '), '└':Text('  └──') \
+        ,'┘':Text('──┘  '), '├':Text('  ├──'), '┤':Text('──┤  '), '┬':Text('──┬──'), '┴':Text('──┴──'), '┼':Text('──┼──') }
 
     # Border on all sides; double line
-    borders_all2 = {'─':Text('═'), '│':Text(' ║ '), '┌':Text(' ╔═'), '┐':Text('═╗ '), '└':Text(' ╚═') \
+    borders_double1 = {'─':Text('═'), '│':Text(' ║ '), '┌':Text(' ╔═'), '┐':Text('═╗ '), '└':Text(' ╚═') \
         ,'┘':Text('═╝ '), '├':Text(' ╠═'), '┤':Text('═╣ '), '┬':Text('═╦═'), '┴':Text('═╩═'), '┼':Text('═╬═') }
 
     # Space as horizontal border (padding); no top/bottom/middle lines
@@ -143,7 +230,9 @@ class Board:
         '─':Text(''), '┌':Text(''), '┐':Text(''), '└':Text(''), '┘':Text(''), '├':Text(''), '┤':Text(''), '┼':Text('') }
 
     def richtext(self, padding: list[Text] = [], \
-        borders: dict[str,Text] = {x:Text(x) for x in [*'─│┌┐└┘├┤┬┴┼']}) -> list[Text]:
+        borders: dict[str,Text] = {x:Text(x) for x in [*'─│┌┐└┘├┤┬┴┼']}, \
+        unused: Text = Text('█', style = "white"), \
+        gridref: str|None = None) -> list[Text]:
 
         if len(borders) == 0:
             borders = {x:Text('') for x in [*'─│┌┐└┘├┤┬┴┼']}
@@ -187,8 +276,14 @@ class Board:
 
             row_piece_strs = []
             for c in range(self.xsize):
-                piece = self._board[r][c]
-                piece_rt = piece.richtext()
+                piece = self._board[self.ysize - r - 1][c]
+                if piece.code >= 0:
+                    piece_rt = piece.richtext()
+                else:
+                    unused_str = unused.copy()
+                    if piece.str_xcols > 1:
+                        unused_str.pad_left(piece.str_xcols-1, unused.plain)
+                    piece_rt = [ unused_str for i in range(piece.str_yrows) ]
                 row_piece_strs.append(piece_rt)
 
             # Each row of the game piece
@@ -217,9 +312,6 @@ class Board:
             rowstrs.append(borders["┘"])
             strs[total_yrows-1] = Text('').join(rowstrs)
 
-
-
-
                     # for pc in range(self.piece_size[0]):
                     #     x = c*(self.piece_size[0] + len(padding)) + pc
                     #     y = (self.ysize * self.piece_size[1] - 1) - (r * self.piece_size[1]) - (self.piece_size[1] - 1) + pr
@@ -230,6 +322,17 @@ class Board:
                 for pc in range(len(padding)):
                     x = self.piece_size[0] + c*(self.piece_size[0] + len(padding)) + pc
                     strs[yrow+r] = strs[r][:x] + padding[pc] + strs[r][x+1:]
+
+        if gridref is not None:
+            for i in range(self.xsize):
+                ch = Text(ascii_lowercase[i], style = gridref)
+                x = len(borders['┌']) + i * (self.piece_size[0] + len(borders['┬'])) + self.piece_size[0]//2 
+                strs[0] = strs[0][:x] + ch + strs[0][x+1:]
+            for i in range(self.ysize):
+                ch = Text(str(i+1), style = gridref)
+                x = len(borders['┌']) // 2
+                y = 1 + i * (self.piece_size[1] + 1) + self.piece_size[1]//2
+                strs[y] = strs[y][:x] + ch + strs[y][x+1:]
 
         return (strs)
 
@@ -301,6 +404,17 @@ class Board:
             return invalid
 
         return (x, y, command)
+
+    def from_gridref(self, turn: str) -> tuple:
+        x = ord(turn.upper()[0]) - ord('A')
+        y = self.ysize - int(turn[1])
+        x, y = self.validate_xy(x, y)
+        return (x, y, turn[2:])
+
+    def to_gridref(self, x:int, y:int) -> str:
+        xs = ascii_lowercase[x]
+        ys = hexdigits[self.ysize - y]
+        return f"{xs}{ys}"
 
 # ----------------------------------------
 

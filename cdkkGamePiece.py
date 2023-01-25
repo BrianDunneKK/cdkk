@@ -138,6 +138,41 @@ class Dice(GamePiece):
 
 # ========================================
 
+class Counter3(GamePiece):
+    def strings(self) -> list[str]:
+        if self.code == 0:
+            strs = ["     "] * 3
+        elif self.code == 1:
+            strs = [
+                " ▄▄▄ "
+                ,"▐███▌"
+                ," ▀▀▀ "]
+        elif self.code == 2:
+            strs = [
+                " ·-· "
+                ,"|   |"
+                ," ·-· "]
+        elif self.code == 3:
+            strs = [
+                " *** "
+                ,"*****"
+                ," *** "]
+        elif self.code == -1:
+            strs = ["     " ,"     " ,"     "]
+        else:
+            strs = [
+                f" {self.symbol}{self.symbol}{self.symbol} "
+                ,f"{self.symbol}{self.symbol}{self.symbol}{self.symbol}{self.symbol}"
+                ,f" {self.symbol}{self.symbol}{self.symbol} "]
+        return strs        
+
+#  ▄▄▄▄
+# ▐████▌
+# ▐████▌
+#  ▀▀▀▀
+
+# ========================================
+
 class Card(GamePiece):
     card_sym = {1: "A", 2:"2", 3:"3", 4:"4", 5:"5", 6:"6", 7:"7", 8:"8", 9:"9", 10:"10", 11:"J", 12:"Q", 13:"K"}
     suit_sym = {0: "♠", 1: "♥", 2: "♦", 3: "♣"}

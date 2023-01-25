@@ -88,6 +88,71 @@ class Test_cdkkBoard(unittest.TestCase):
         self.assertTrue(board.get(1, 1) == 0)
         self.assertTrue(board.get(2, 1) == 0)
 
+    def test_move1(self):
+        board = Board(4, 4)
+        board.set(1, 2, 1)
+        board.move(1, 2, "E", 2)
+        self.assertTrue(board.get(3, 2) == 1)
+
+        board.move(3, 2, "S", 1)
+        self.assertTrue(board.get(3, 1) == 1)
+
+        board.move(3, 1, "W", 3)
+        self.assertTrue(board.get(0, 1) == 1)
+
+        board.move(0, 1, "N", 2)
+        self.assertTrue(board.get(0, 3) == 1)
+
+    def test_move2(self):
+        board = Board(4, 4)
+        board.set(1, 2, 1)
+        board.move(1, 2, "R", 2)
+        self.assertTrue(board.get(3, 2) == 1)
+
+        board.move(3, 2, "D", 1)
+        self.assertTrue(board.get(3, 1) == 1)
+
+        board.move(3, 1, "L", 3)
+        self.assertTrue(board.get(0, 1) == 1)
+
+        board.move(0, 1, "U", 2)
+        self.assertTrue(board.get(0, 3) == 1)
+
+    def test_jump(self):
+        board = Board(4, 4)
+        board.set(1, 0, 1)
+        board.set(2, 0, 2)
+        board.set(3, 1, 1)
+        board.set(2, 2, 1)
+        # . . X .
+        # . . . X
+        # . X Y .
+        ret = board.jump(1, 0, "E")
+        self.assertEqual(ret, 2)
+        self.assertEqual(board.get(1, 0), 0)
+        self.assertEqual(board.get(2, 0), 0)
+        self.assertEqual(board.get(3, 0), 1)
+
+        ret = board.jump(3, 1, "S")
+        self.assertEqual(ret, -1)
+
+        ret = board.jump(3, 0, "N")
+        self.assertEqual(ret, 1)
+        self.assertEqual(board.get(3, 0), 0)
+        self.assertEqual(board.get(3, 1), 0)
+        self.assertEqual(board.get(3, 2), 1)
+
+        ret = board.jump(2, 2, "E")
+        self.assertEqual(ret, -1)
+        ret = board.jump(2, 2, "W")
+        self.assertEqual(ret, -1)
+
+        ret = board.jump(3, 2, "W")
+        self.assertEqual(ret, 1)
+        self.assertEqual(board.get(3, 2), 0)
+        self.assertEqual(board.get(2, 2), 0)
+        self.assertEqual(board.get(1, 2), 1)
+
     def test_strings1(self):
         board = Board(3, 3, {0:".", 1:"X", 2:"O", -1:"?"})
         strs = board.strings()
@@ -192,7 +257,52 @@ class Test_cdkkBoard(unittest.TestCase):
         self.assertEquals(y, -1)
         self.assertEquals(c, "4,3,go")
 
-    def test_filter(self):
+    def test_from_gridref(self):
+        board = Board(3,3)
+        x,y,c = board.from_gridref("a1S")
+        self.assertEquals(x, 0)
+        self.assertEquals(y, 2)
+        self.assertEquals(c, "S")
+
+        x,y,c = board.from_gridref("b3")
+        self.assertEquals(x, 1)
+        self.assertEquals(y, 0)
+        self.assertEquals(c, "")
+
+        x,y,c = board.from_gridref("c2U")
+        self.assertEquals(x, 2)
+        self.assertEquals(y, 1)
+        self.assertEquals(c, "U")
+
+        x,y,c = board.from_gridref("q9")
+        self.assertEquals(x, -1)
+        self.assertEquals(y, -1)
+
+    def test_to_gridref(self):
+        board = Board(3,3)
+        self.assertEquals(board.to_gridref(0, 0), 'a3')
+        self.assertEquals(board.to_gridref(1, 1), 'b2')
+        self.assertEquals(board.to_gridref(2, 2), 'c1')
+
+    def test_offset(self):
+        board = Board(3,3)
+        x,y = board.offset(0, 0, "N", 2)
+        self.assertEquals(x, 0)
+        self.assertEquals(y, 2)
+
+        x,y = board.offset(2, 2, "S", 1)
+        self.assertEquals(x, 2)
+        self.assertEquals(y, 1)
+
+        x,y = board.offset(1, 1, "E", 1)
+        self.assertEquals(x, 2)
+        self.assertEquals(y, 1)
+
+        x,y = board.offset(2, 0, "W", 2)
+        self.assertEquals(x, 0)
+        self.assertEquals(y, 0)
+
+    def test_filter_by_context(self):
         board = Board(3, 2)
         board.set(0, 0, piece = GamePiece(1, context={"colour":"red"}))
         board.set(1, 0, piece = GamePiece(2, context={"colour":"red"}))
@@ -200,17 +310,85 @@ class Test_cdkkBoard(unittest.TestCase):
         board.set(0, 1, piece = GamePiece(4, context={"colour":"red"}))
         board.set(1, 1, piece = GamePiece(5, context={"colour":"blue"}))
         board.set(2, 1, piece = GamePiece(6, context={"colour":"blue"}))
-        red_pieces = board.filter_pieces({"colour":"red"})
-        blue_pieces = board.filter_pieces({"colour":"blue"})
+
+        red_pieces = board.filter_by_context({"colour":"red"})
         self.assertEquals(len(red_pieces), 4)
+        self.assertEquals(red_pieces[2][0], 2)
+        self.assertEquals(red_pieces[2][1], 0)
+
+        blue_pieces = board.filter_by_context({"colour":"blue"})
         self.assertEquals(len(blue_pieces), 2)
+        self.assertEquals(blue_pieces[1][0], 2)
+        self.assertEquals(blue_pieces[1][1], 1)
 
         piece1 = board.get_piece(0,0)
         piece2 = board.get_piece(2,0)
         piece1.context["hidden"] = True
         piece2.context["hidden"] = True
-        red_pieces = board.filter_pieces({"colour":"red", "hidden":True})
+        red_pieces = board.filter_by_context({"colour":"red", "hidden":True})
         self.assertEquals(len(red_pieces), 2)
+
+    def test_filter_by_code(self):
+        board = Board(3, 2)
+        board.set(0, 0, piece = GamePiece(1))
+        board.set(1, 0, piece = GamePiece(2))
+        board.set(2, 0, piece = GamePiece(3))
+        board.set(0, 1, piece = GamePiece(1))
+        board.set(1, 1, piece = GamePiece(1))
+        board.set(2, 1, piece = GamePiece(2))
+
+        pieces = board.filter_by_code(1)
+        self.assertEquals(len(pieces), 3)
+        self.assertEquals(pieces[0], (0, 0))
+        self.assertEquals(pieces[1], (0, 1))
+        self.assertEquals(pieces[2], (1, 1))
+
+        pieces = board.filter_by_code(2)
+        self.assertEquals(len(pieces), 2)
+        self.assertEquals(pieces[0], (1, 0))
+        self.assertEquals(pieces[1], (2, 1))
+
+        pieces = board.filter_by_code(3)
+        self.assertEquals(len(pieces), 1)
+        self.assertEquals(pieces[0], (2, 0))
+
+    def test_unused(self):
+        board = Board(3, 3, {0:".", 1:"X", 2:"O", -1:"?"})
+        board.set_unused(0, 0)
+        board.set_unused(2, 0)
+        board.set_unused(2, 2)
+        self.assertEquals(board.get(2,2), -1)
+        strs = board.strings()
+        self.assertEquals(strs[2], "? . ?")
+        self.assertEquals(strs[0], ". . ?")
+
+    def test_unused_mask(self):
+        board = Board(3, 3, {0:".", 1:"X", 2:"O", -1:"?"})
+        mask = [ [0,1,0], [1,1,0], [0,1,1] ]
+        board.set_unused_mask(mask)
+        strs = board.strings()
+        self.assertEquals(strs[0], "? . ?")
+        self.assertEquals(strs[1], ". . ?")
+        self.assertEquals(strs[2], "? . .")
+
+    def test_fill(self):
+        board = Board(3, 3, {0:".", 1:"X", 2:"O", -1:"?"})
+        mask = [ [0,1,0], [1,1,0], [0,1,1] ]
+        board.set_unused_mask(mask)
+        board.fill(1)
+        strs = board.strings()
+        self.assertEquals(strs[0], "? X ?")
+        self.assertEquals(strs[1], "X X ?")
+        self.assertEquals(strs[2], "? X X")
+
+        board.clear_all()
+        board.set(0,1,2)
+        board.fill(1, overwrite_ok=False)
+        strs = board.strings()
+        self.assertEquals(strs[0], "? X ?")
+        self.assertEquals(strs[1], "O X ?")
+        self.assertEquals(strs[2], "? X X")
+
 
 # ----------------------------------------
 
