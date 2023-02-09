@@ -4,8 +4,9 @@ from rich.text import Text
 import random
 
 class GamePiece:
-    def __init__(self, code: int = 0, value: int = -1, symbol: str = "", symbol_dict: dict = {}, random_code: bool = False, context: dict = {}):
-        # Code = 0 ... Placeholder = Blank = Not a game piece
+    def __init__(self, code: int = 0, value: int = -999, symbol: str = "", symbol_dict: dict = {}, random_code: bool = False, context: dict = {}):
+        # Code = 0  ... Placeholder = Blank = Not a game piece
+        # Code = -1 ... Unused cell 
         if random_code:
             code = self.random_code()
         self.context = {}
@@ -30,9 +31,9 @@ class GamePiece:
     def add_context(self, context: dict = {}) -> None:
         self.context = self.context | context
 
-    def set(self, code: int = 0, value: int = -1, symbol: str = "", symbol_dict: dict = {}, context: dict = {}) -> int:
+    def set(self, code: int = 0, value: int = -999, symbol: str = "", symbol_dict: dict = {}, context: dict = {}) -> int:
         self._code = code
-        self._value = code if value == -1 else value
+        self._value = code if value == -999 else value
         self.add_context(context)
 
         if symbol == "" and len(symbol_dict) > 0:
@@ -64,9 +65,6 @@ class GamePiece:
     def richtext(self) -> list[Text]:
         style = self.context.get("style", "")
         rt = [Text(s, style=style) for s in self.strings()]
-        # if style != "":
-        #     for t in rt:
-        #         t.stylize(style)
         return rt
 
     def strings(self) -> list[str]:
@@ -108,6 +106,22 @@ class GamePieceSet(deque[GamePiece]):
 
 # ========================================
 
+class GamePieceNM(GamePiece):
+    def __init__(self, code: int = 0, value: int = -999, symbol: str = "", symbol_dict: dict = {}, random_code: bool = False, context: dict = {}, ncols = 1, mrows = 1):
+        super().__init__(code, value, symbol, symbol_dict, random_code, context)
+        self.ncols = ncols
+        self.mrows = mrows
+
+    def strings(self) -> list[str]:
+        strs = []
+        strs = [" " * self.ncols] * ((self.mrows-1)//2)
+        strs.append(f"{self.symbol:^{self.ncols}}")
+        strs.extend([" " * self.ncols] * (self.mrows - 1 - ((self.mrows-1)//2)))
+        return strs
+        
+
+# ========================================
+
 class Dice(GamePiece):
     pips = {
         0 : "         "
@@ -121,7 +135,7 @@ class Dice(GamePiece):
     }
 
     def __init__(self, code: int = 0, random_dice: bool = False, context: dict = {}):
-        super().__init__(code, -1, "", random_code = random_dice, context = context)
+        super().__init__(code = code, symbol = "", random_code = random_dice, context = context)
 
     def random_code(self) -> int:
         return random.randint(1, 6)
@@ -292,6 +306,12 @@ if __name__ == '__main__':
     ttt_o = GamePiece(2, symbol="O")
     print(*ttt_x.strings(), sep="\n")
     print(*ttt_o.strings(), sep="\n")
+
+    ttt_x = GamePieceNM(1, symbol="X", ncols=5)
+    ttt_o = GamePieceNM(2, symbol="O", ncols=7, mrows=3)
+    print(*ttt_x.strings(), sep="\n")
+    print(*ttt_o.strings(), sep="\n")
+
     for i in range(6):
         die = Dice(i+1)
         print(*die.strings(), sep = "\n")

@@ -104,6 +104,23 @@ class Test_cdkkGamePieceSet(unittest.TestCase):
 
 # ----------------------------------------
 
+class Test_GamePieceNM(unittest.TestCase):
+    def test_GamePieceNM(self):
+        piece = GamePieceNM(1, symbol="X", ncols=5)
+        strs = piece.strings()
+        self.assertEquals(len(strs), 1)
+        self.assertEquals(len(strs[0]), 5)
+        self.assertEquals("".join(piece.strings()), "  X  ")
+
+    def test_GamePieceNM2(self):
+        piece = GamePieceNM(1, symbol="XX", ncols=6, mrows=3)
+        strs = piece.strings()
+        self.assertEquals(len(strs), 3)
+        self.assertEquals(len(strs[0]), 6)
+        self.assertEquals(strs, ["      ", "  XX  ", "      "])
+
+# ----------------------------------------
+
 class Test_cdkkDice(unittest.TestCase):
     def test_Dice(self):
         piece = Dice()

@@ -17,6 +17,34 @@ class Test_cdkkBoard(unittest.TestCase):
         self.assertEqual(board.xsize, 4)
         self.assertEqual(board.ysize, 6)
 
+    def test_resize(self):
+        board = Board(3, 2, symbol_dict={-1:"?"})
+        board.set(0, 0, 1)
+        board.set(1, 1, 2)
+        board.set(2, 1, 3)
+        self.assertEqual(board.xsize, 3)
+        self.assertEqual(board.ysize, 2)
+        self.assertEqual(board.get(0, 0), 1)
+        self.assertEqual(board.get(1, 1), 2)
+        self.assertEqual(board.get(2, 1), 3)
+        self.assertEqual(board.get(2, 0), 0)
+
+        board.resize(4, 6)
+        self.assertEqual(board.xsize, 4)
+        self.assertEqual(board.ysize, 6)
+        self.assertEqual(board.get(0, 0), 1)
+        self.assertEqual(board.get(1, 1), 2)
+        self.assertEqual(board.get(2, 1), 3)
+        self.assertEqual(board.get(2, 0), 0)
+
+        board.resize(2, 2)
+        self.assertEqual(board.xsize, 2)
+        self.assertEqual(board.ysize, 2)
+        self.assertEqual(board.get(0, 0), 1)
+        self.assertEqual(board.get(1, 1), 2)
+        self.assertEqual(board.get(1, 0), 0)
+
+
     def test_get(self):
         board = Board(3, 8)
         x = board.get(0,0)
@@ -66,6 +94,16 @@ class Test_cdkkBoard(unittest.TestCase):
 
         board.set(0, 0, piece = Dice(3))
         self.assertTrue(board.get(0, 0) == 3)
+
+    def test_set_symbol(self):
+        board = Board(3, 3, symbol_dict = {0:" ", 1:"X", 2:"O", -1:"#"})
+        success = board.set_symbol(0, 0, "X")
+        self.assertTrue(success)
+        success = board.set_symbol(1, 2, "O")
+        self.assertTrue(success)
+        success = board.set_symbol(2, 2, "#")
+        self.assertFalse(success)
+        self.assertEquals(board.codes(), [[1,0,0],[0,0,0],[0,2,0]])
 
     def test_clear(self):
         board = Board(6, 2)
@@ -152,6 +190,63 @@ class Test_cdkkBoard(unittest.TestCase):
         self.assertEqual(board.get(3, 2), 0)
         self.assertEqual(board.get(2, 2), 0)
         self.assertEqual(board.get(1, 2), 1)
+
+    def test_transfer(self):
+        board = Board(4, 6, symbol_dict={-1:"?"})
+        board.set(0, 0, 1)
+        board.set(1, 1, 2)
+        board.set(2, 1, 3)
+        codes = board.codes()
+        self.assertEqual(codes[0], [1, 0, 0, 0])
+        self.assertEqual(codes[1], [0, 2, 3, 0])
+        self.assertEqual(codes[2], [0, 0, 0, 0])
+        self.assertEqual(codes[3], [0, 0, 0, 0])
+        self.assertEqual(codes[4], [0, 0, 0, 0])
+        self.assertEqual(codes[5], [0, 0, 0, 0])
+
+        board.transfer(0, 0, 2, 2, +2, +2)
+        codes = board.codes()
+        self.assertEqual(codes[0], [0, 0, 0, 0])
+        self.assertEqual(codes[1], [0, 0, 3, 0])
+        self.assertEqual(codes[2], [0, 0, 1, 0])
+        self.assertEqual(codes[3], [0, 0, 0, 2])
+        self.assertEqual(codes[4], [0, 0, 0, 0])
+        self.assertEqual(codes[5], [0, 0, 0, 0])
+
+        board.transfer(2, 1, 1, 3, -1, -1)
+        codes = board.codes()
+        self.assertEqual(codes[0], [0, 3, 0, 0])
+        self.assertEqual(codes[1], [0, 1, 0, 0])
+        self.assertEqual(codes[2], [0, 0, 0, 0])
+        self.assertEqual(codes[3], [0, 0, 0, 2])
+        self.assertEqual(codes[4], [0, 0, 0, 0])
+        self.assertEqual(codes[5], [0, 0, 0, 0])
+
+        board.transfer(0, 1, 4, 1, 0, 1)
+        codes = board.codes()
+        self.assertEqual(codes[0], [0, 3, 0, 0])
+        self.assertEqual(codes[1], [0, 0, 0, 0])
+        self.assertEqual(codes[2], [0, 1, 0, 0])
+        self.assertEqual(codes[3], [0, 0, 0, 2])
+        self.assertEqual(codes[4], [0, 0, 0, 0])
+        self.assertEqual(codes[5], [0, 0, 0, 0])
+
+        ret = board.transfer(2, 3, 2, 2, -2, 1)
+        codes = board.codes()
+        self.assertEqual(codes[0], [0, 3, 0, 0])
+        self.assertEqual(codes[1], [0, 0, 0, 0])
+        self.assertEqual(codes[2], [0, 1, 0, 0])
+        self.assertEqual(codes[3], [0, 0, 0, 0])
+        self.assertEqual(codes[4], [0, 2, 0, 0])
+        self.assertEqual(codes[5], [0, 0, 0, 0])
+
+
+    def test_codes(self):
+        board = Board(3, 2)
+        board.set(0, 0, 1)
+        board.set(1, 1, 2)
+        board.set(2, 1, 3)
+        self.assertEqual(board.codes(), [[1,0,0], [0,2,3]])
 
     def test_strings1(self):
         board = Board(3, 3, {0:".", 1:"X", 2:"O", -1:"?"})
@@ -261,12 +356,12 @@ class Test_cdkkBoard(unittest.TestCase):
         board = Board(3,3)
         x,y,c = board.from_gridref("a1S")
         self.assertEquals(x, 0)
-        self.assertEquals(y, 2)
+        self.assertEquals(y, 0)
         self.assertEquals(c, "S")
 
         x,y,c = board.from_gridref("b3")
         self.assertEquals(x, 1)
-        self.assertEquals(y, 0)
+        self.assertEquals(y, 2)
         self.assertEquals(c, "")
 
         x,y,c = board.from_gridref("c2U")
@@ -280,9 +375,9 @@ class Test_cdkkBoard(unittest.TestCase):
 
     def test_to_gridref(self):
         board = Board(3,3)
-        self.assertEquals(board.to_gridref(0, 0), 'a3')
+        self.assertEquals(board.to_gridref(0, 0), 'a1')
         self.assertEquals(board.to_gridref(1, 1), 'b2')
-        self.assertEquals(board.to_gridref(2, 2), 'c1')
+        self.assertEquals(board.to_gridref(2, 2), 'c3')
 
     def test_offset(self):
         board = Board(3,3)
@@ -370,6 +465,30 @@ class Test_cdkkBoard(unittest.TestCase):
         self.assertEquals(strs[0], "? . ?")
         self.assertEquals(strs[1], ". . ?")
         self.assertEquals(strs[2], "? . .")
+
+    def test_code_mask(self):
+        board = Board(3, 3)
+        board.set(0,0,9)
+        board.set(1,0,9)
+        board.set(2,0,9)
+        mask = [ [0,1,2], [3,4,5], [6,0,7] ]
+        board.set_code_mask(mask)
+        codes = board.codes()
+        self.assertEquals(codes[0], [6,9,7])
+        self.assertEquals(codes[1], [3,4,5])
+        self.assertEquals(codes[2], [0,1,2])
+
+    def test_symbol_mask(self):
+        board = Board(3, 3, symbol_dict = {0:" ", 1:"X", 2:"O", -1:"#"})
+        board.set_symbol(0,0,'X')
+        board.set_symbol(1,0,'O')
+        board.set_symbol(2,1,'X')
+        sym_mask = [ ["", "X", ""], ["", "", " "], ["O", "O", "O"] ]
+        board.set_symbol_mask(sym_mask)
+        codes = board.codes()
+        self.assertEquals(codes[0], [2,2,2])
+        self.assertEquals(codes[1], [0,0,0])
+        self.assertEquals(codes[2], [0,1,0])
 
     def test_fill(self):
         board = Board(3, 3, {0:".", 1:"X", 2:"O", -1:"?"})
