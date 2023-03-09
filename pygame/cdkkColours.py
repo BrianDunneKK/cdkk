@@ -1,7 +1,7 @@
 # To Do: Add support for CSS styles
 # To Do: Add support for style dictionary - set style based on key - global dictionary?
 
-from cdkk.cdkkUtils import *
+from cdkkUtils import *
 
 class Style(dict):
     # Key = Style attribute

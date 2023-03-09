@@ -1,5 +1,6 @@
 from sys import maxsize
 from cdkkConfig import Config
+from cdkkBoard import Board
 
 class Game:
     # Methods to update in sub-classes: init, start, check, update
@@ -12,6 +13,8 @@ class Game:
         self._player_wins = self._scores = []
         self.options: list[str] = []
         self.next_after_update = True
+        self.board = Board()
+
         self.status = -2
             # Game status:
             #   -2 = No game in progress
@@ -101,6 +104,7 @@ class Game:
 
     def update(self, turn):
         # Take turn for player: update game elements and run game logic
+
         self.take(turn)
         self.calc_scores()
         self.update_status(turn)

@@ -99,6 +99,10 @@ class Board:
             piece = self._board[y][x]
         return piece
 
+    def get_symbol(self, x:int, y:int) -> str:
+        piece = self.get_piece(x, y)
+        return piece.symbol
+
     def get_offset(self, x:int, y:int, dir:str, count:int) -> int:
         x, y = self.offset(x, y, dir, count)
         return self.get(x, y)
@@ -131,6 +135,7 @@ class Board:
         else:
             self._board[y][x] = self.create_piece(code)
         self.piece_size = (self._board[y][x].str_xcols, self._board[y][x].str_yrows)
+        self._board[y][x].add_context({"xcol": x, "yrow":y})
         return True
 
     def set_symbol(self, x:int, y:int, symbol:str = "", overwrite_ok:bool = True) -> bool:
@@ -140,7 +145,8 @@ class Board:
     def set_unused(self, x:int, y:int) -> bool:
         existing = int(self.get(x, y))
         if existing >= 0:
-            self._board[y][x] = self.create_piece(-1)
+            self.set(x, y, overwrite_ok=True, piece=self.create_piece(-1))
+            # self._board[y][x] = self.create_piece(-1)
         return True
 
     def set_unused_mask(self, mask:list[list[int]]) -> bool:
