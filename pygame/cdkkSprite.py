@@ -11,8 +11,8 @@ import pygame
 import pygame.gfxdraw
 import uuid
 from math import sin, cos
-from cdkk.cdkkUtils import *
-from cdkk.cdkkColours import *
+from cdkkUtils import *
+from cdkkColours import *
 
 sprite_styles = {
     "Shape": {"fillcolour": "white", "outlinecolour": "black", "outlinewidth": 3,

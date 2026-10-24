@@ -1,18 +1,25 @@
+from sys import path
+path.append('..')
 import pygame
-import cdkk
 import random
+import cdkkPyGameApp
+import cdkkSprite
+import cdkkSpriteManager
+import cdkkSpriteExtra
+import cdkkColours
+import cdkkUtils
 
 app_styles = {
     "Ninja": {"fillcolour": "yellow", "shape": "Ellipse", "width": 80, "height": 60}
 }
-cdkk.stylesheet.add_stylesheet(app_styles)
+cdkkColours.stylesheet.add_stylesheet(app_styles)
 
 # --------------------------------------------------
 
 
-class Sprite_Ninja(cdkk.Sprite_TextBox):
+class Sprite_Ninja(cdkkSprite.Sprite_TextBox):
     def __init__(self, posx, posy):
-        super().__init__("Ninja", style=cdkk.stylesheet.style("Ninja"))
+        super().__init__("Ninja", style=cdkkColours.stylesheet.style("Ninja"))
         self.rect.left = posx
         self.rect.top = posy
         # Initialise the Ninja sprite
@@ -36,14 +43,14 @@ class Sprite_Ninja(cdkk.Sprite_TextBox):
 
 # --------------------------------------------------
 
-class Manager_Ninja(cdkk.SpriteManager):
+class Manager_Ninja(cdkkSpriteManager.SpriteManager):
     def __init__(self, limits):
         super().__init__("Ninja Manager")
         self.limits = limits
 
     def event(self, e):
         dealt_with = super().event(e)
-        if not dealt_with and e.type == cdkk.EVENT_GAME_CONTROL:
+        if not dealt_with and e.type == cdkkUtils.EVENT_GAME_CONTROL:
             if e.action == "NewNinja":
                 self.add_ninja()
                 dealt_with = True
@@ -83,24 +90,24 @@ class Manager_Ninja(cdkk.SpriteManager):
 # --------------------------------------------------
 
 
-class Manager_Scoreboard(cdkk.SpriteManager):
+class Manager_Scoreboard(cdkkSpriteManager.SpriteManager):
     def __init__(self, game_time, limits):
         super().__init__("Scoreboard Manager")
         score_style = {"fillcolour": None, "align_horiz": "L"}
 
         self._game_time = game_time
         self._timer = None
-        self._time_left = cdkk.Sprite_DynamicText(
-            "Time Left", cdkk.cdkkRect(10, 10, 200, 40), score_style)
+        self._time_left = cdkkSpriteExtra.Sprite_DynamicText(
+            "Time Left", cdkkUtils.cdkkRect(10, 10, 200, 40), score_style)
         self._time_left.set_text_format("Time Left: {0:0.1f}", 0)
         self.add(self._time_left)
 
-        self._fps = cdkk.Sprite_DynamicText(
-            "FPS", cdkk.cdkkRect(10, 60, 200, 40), score_style)
+        self._fps = cdkkSpriteExtra.Sprite_DynamicText(
+            "FPS", cdkkUtils.cdkkRect(10, 60, 200, 40), score_style)
         self._fps.set_text_format("FPS: {0:4.1f}", 0)
         self.add(self._fps)
 
-        self._game_over = cdkk.Sprite_GameOver(limits)
+        self._game_over = cdkkSpriteExtra.Sprite_GameOver(limits)
 
     def set_fps(self, new_fps):
         self._fps.set_text(new_fps)
@@ -112,8 +119,8 @@ class Manager_Scoreboard(cdkk.SpriteManager):
 
     def start_game(self):
         super().start_game()
-        self._timer = cdkk.Timer(
-            self._game_time, cdkk.EVENT_GAME_TIMER_1, auto_start=True)
+        self._timer = cdkkUtils.Timer(
+            self._game_time, cdkkUtils.EVENT_GAME_TIMER_1, auto_start=True)
         self.remove(self._game_over)
 
     def end_game(self):
@@ -123,7 +130,7 @@ class Manager_Scoreboard(cdkk.SpriteManager):
 # --------------------------------------------------
 
 
-class MyGame(cdkk.PyGameApp):
+class MyGame(cdkkPyGameApp.PyGameApp):
     def init(self):
         super().init()
 
@@ -141,7 +148,7 @@ class MyGame(cdkk.PyGameApp):
             pygame.K_c: "ClearNinjas"
         }
         user_event_map = {
-            cdkk.EVENT_GAME_TIMER_1: "GameOver"
+            cdkkUtils.EVENT_GAME_TIMER_1: "GameOver"
         }
         self.event_mgr.event_map(
             key_event_map=key_map, user_event_map=user_event_map)

@@ -1,12 +1,16 @@
+from sys import path
+path.append('..')
 import pygame
 import os
-from cdkk.cdkkApp import *
-from cdkk.cdkkSprite import *
+import cdkkApp
+import cdkkSprite
+import cdkkUtils 
+import cdkkColours
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 
-class PyGameApp(cdkkApp):
+class PyGameApp(cdkkApp.cdkkApp):
     default_config = {
         "caption": "CoderDojo Kilkenny",
         "width": 1000,
@@ -35,20 +39,20 @@ class PyGameApp(cdkkApp):
         super().__init__(None)
         self._sprite_mgrs = {}
         self.display_surface = None
-        self.event_mgr = EventManager()
+        self.event_mgr = cdkkUtils.EventManager()
         self._fast_keys = False
         self._key_interval = 0
         self._key_timer = None
         self._joystick = None
         self._slow_update_timer = None
-        self._loop_timer = LoopTimer(20)
+        self._loop_timer = cdkkUtils.LoopTimer(20)
         self._scroll_timer = None
-        self.update_config(merge_dicts(cdkkApp.default_config,
+        self.update_config(cdkkUtils.merge_dicts(cdkkApp.cdkkApp.default_config,
                                        PyGameApp.default_config, app_config))
         self._width = self.get_config("width")
         self._height = self.get_config("height")
         self._size = (self._width, self._height)
-        cdkkImage.imagePath = self.get_config("image_path")
+        cdkkUtils.cdkkImage.imagePath = self.get_config("image_path")
 
     @property
     def boundary(self):
@@ -80,11 +84,10 @@ class PyGameApp(cdkkApp):
             self.set_fast_keys(self.get_config("key_repeat_time"))
 
         if self.get_config("scroll_time") is not None:
-            self._scroll_timer = Timer(self.get_config(
-                "scroll_time")/1000.0, EVENT_SCROLL_GAME)
-            self.event_mgr.user_event(EVENT_SCROLL_GAME, "ScrollGame")
+            self._scroll_timer = cdkkUtils.Timer(self.get_config("scroll_time")/1000.0, cdkkUtils.EVENT_SCROLL_GAME)
+            self.event_mgr.user_event(cdkkUtils.EVENT_SCROLL_GAME, "ScrollGame")
 
-        self._joystick = cdkkJoystick(self.get_config(
+        self._joystick = cdkkUtils.cdkkJoystick(self.get_config(
             "joystick_name"), self.get_config("joystick_number"))
         self._clock = pygame.time.Clock()
         return True
@@ -113,7 +116,7 @@ class PyGameApp(cdkkApp):
         # Handle multiple keys pressed at once. Repeat key every repeat_msecs
         self._fast_keys = True
         self._key_interval = repeat_msecs
-        self._key_timer = Timer(repeat_msecs/1000.0, EVENT_READ_KEYBOARD)
+        self._key_timer = cdkkUtils.Timer(repeat_msecs/1000.0, cdkkUtils.EVENT_READ_KEYBOARD)
 
     def config_joystick(self, limits=None, obj_size=None, steps=None):
         self._joystick.limits = limits
@@ -124,13 +127,13 @@ class PyGameApp(cdkkApp):
 
     def event(self, e):
         dealt_with = False
-        is_broadcast = EventManager.is_broadcast(e)
+        is_broadcast = cdkkUtils.EventManager.is_broadcast(e)
 
-        if e.type == pygame.QUIT or (e.type == EVENT_GAME_CONTROL and e.action == "Quit"):
+        if e.type == pygame.QUIT or (e.type == cdkkUtils.EVENT_GAME_CONTROL and e.action == "Quit"):
             self.exit_app()
             dealt_with = True
 
-        if not dealt_with and e.type == EVENT_GAME_CONTROL:
+        if not dealt_with and e.type == cdkkUtils.EVENT_GAME_CONTROL:
             if e.action == "StartGame":
                 self.start_game()
                 dealt_with = True
@@ -164,7 +167,7 @@ class PyGameApp(cdkkApp):
             sm.end_game()
 
     def manage_events(self):
-        for event in EventManager.get():
+        for event in cdkkUtils.EventManager.get():
             self.event(event)
 
     def update(self):
@@ -181,7 +184,7 @@ class PyGameApp(cdkkApp):
         super().draw()
         if self.get_config("background_fill") is not None:
             self.display_surface.fill(
-                colours[self.get_config("background_fill")])
+                cdkkColours.colours[self.get_config("background_fill")])
         for sm in self._sprite_mgrs:
             # Ask each sprite manager to draw its sprites
             sm.draw(self.display_surface)

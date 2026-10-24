@@ -1,5 +1,5 @@
-from cdkk.cdkkSprite import *
-from cdkk.cdkkColours import *
+from cdkkSprite import *
+from cdkkColours import *
 
 sprite_extra_styles = {
     "Label": {"fillcolour":None, "outlinecolour":None, "textsize":36 },

@@ -10,7 +10,7 @@ class Board:
         if ysize is None:
             ysize = xsize
         self._size = (xsize, ysize)
-        if xsize is not None:
+        if xsize is not None and ysize is not None:
             for y in range(0, ysize):
                 row = []
                 for x in range(0, xsize):

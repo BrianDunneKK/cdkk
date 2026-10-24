@@ -1,6 +1,6 @@
-from cdkk.cdkkSprite import *
-from cdkk.cdkkSpriteExtra import *
-from cdkk.cdkkApp import *
+from cdkkSprite import *
+from cdkkSpriteExtra import *
+from cdkkApp import *
 
 # --------------------------------------------------
 

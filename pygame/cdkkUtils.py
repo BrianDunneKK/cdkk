@@ -6,7 +6,7 @@ import math
 from collections import deque
 import random
 import os
-import msvcrt
+import readchar
 import re
 
 # --------------------------------------------------

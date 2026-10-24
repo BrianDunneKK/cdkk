@@ -1,4 +1,4 @@
-from cdkk.cdkkUtils import *
+from cdkkUtils import *
 
 # --------------------------------------------------
 
